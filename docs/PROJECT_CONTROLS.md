@@ -1,5 +1,9 @@
 # Research documentation rules
 
+## Chat continuity and repository-backed handoffs
+
+Treat GitHub as the durable state, not a long-lived chat transcript. At the start of each work session read [../AGENTS.md](../AGENTS.md), [../tracking/HANDOFF.md](../tracking/HANDOFF.md) and the progress/decision logs. After major results or methodological changes, update the living handoff and progress log and commit a dated snapshot if warranted. Shard early on stage boundaries, ambiguous state, or a long/multi-branch conversation. The assistant can make a qualitative continuity check but **cannot measure a numerical context-health percentage**; see [CHAT_CONTINUITY.md](CHAT_CONTINUITY.md).
+
 ## Evidence levels
 
 - `PLANNED`: not implemented or tested.
