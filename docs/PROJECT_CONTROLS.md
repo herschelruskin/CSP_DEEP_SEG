@@ -19,9 +19,11 @@ A passing synthetic test is never proof that real HCP files pass. A scanner disp
 - Keep native geometry/units; for masks use nearest-neighbor interpolation only if a mask must be resampled.
 - Store each dataset split as an immutable, hashed private manifest before training.
 
-## Course reporting constraints
+## Project horizons and course reporting constraints
 
-The user-supplied CPS 843/CP 8307 instructions require IEEE double-column, **4–6 pages excluding references**, code link at end of abstract and deadline **2026-12-14 23:59**. The separate reported December 16 date is unverified. Design experiments so at least the classical baseline and U-Net can be reported by the earlier deadline. The final course report is not this protocol.
+**CSP_DEEP_SEG is a long-term research project, not a project that ends with the class.** The December 2026 submission is one checkpoint. The user-supplied CPS 843/CP 8307 instructions require IEEE double-column, **4–6 pages excluding references**, a code link at the end of the abstract, and deadline **2026-12-14 23:59**. The separate reported December 16 date is unverified. Report the strongest validated work actually available by that deadline; do not manufacture results, relax independent-test rules, or declare incomplete research phases finished to satisfy the course milestone. A baseline and U-Net comparison is a *candidate* course scope, not a mandatory shortcut or the final research endpoint.
+
+The long-term research roadmap retains anatomically defensible labels, scalable cross-dataset localization, model comparisons, independent evaluation, failure analysis, and future external validation. See [ROADMAP.md](ROADMAP.md). The final course report is **not** this protocol and **not** the terminal project report.
 
 ## Data and access
 
