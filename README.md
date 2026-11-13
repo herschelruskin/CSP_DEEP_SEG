@@ -32,7 +32,8 @@ Can we automatically localize and accurately segment the small, variable CSP cav
 | 7 | Manual + statistical validation | Independent test-set Dice, volume error, failure/QC analysis | **Planned** |
 
 **Execution details and stage gates:** [docs/SEVEN_STAGE_PROCESS.md](docs/SEVEN_STAGE_PROCESS.md).  
-**Single source of truth for progress:** [tracking/PROGRESS.md](tracking/PROGRESS.md).
+**Single source of truth for progress:** [tracking/PROGRESS.md](tracking/PROGRESS.md).  
+**For every fresh AI-assisted work session:** start with [AGENTS.md](AGENTS.md), then [tracking/HANDOFF.md](tracking/HANDOFF.md). See [docs/CHAT_CONTINUITY.md](docs/CHAT_CONTINUITY.md) for early-sharding and verified handoff rules.
 
 ## Confirmed vs. unverified (2026-11-13)
 
