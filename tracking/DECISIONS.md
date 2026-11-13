@@ -15,6 +15,7 @@ Log every scientific or engineering choice and link to confirming tests. Update 
 | D-009 | 2026-11-13 | Treat the **December 2026 CPS 843 submission as an interim milestone**, not CSP_DEEP_SEG's end date | Project is intended as a longer-term, potentially thesis/publication-grade research effort; methods and independent evaluation should outlast class deadlines | Limited first-pass deliverables may not yet establish full generalization or publication readiness | ACTIVE SCOPE POLICY; document verified course results separately from longer-term milestones |
 
 | D-010 | 2026-11-13 | Prioritize a **minimal, scientifically defensible proof of concept** for the course, deferring general-purpose tooling, external-cohort robustness and optional architectural complexity | First-pass deadline is tight; demonstrate a working validated method before expanding scope | A preliminary POC cannot establish publication-level accuracy or cross-dataset generalization | ACTIVE; see `docs/ROADMAP.md`, continue development beyond course milestone |
+| D-011 | 2026-11-13 | Require **early chat sharding with GitHub-backed Markdown handoffs and explicit continuity checks** | Long conversations can lose decisions or obscure verification; persistent code/docs are more reliable than remembered chat summaries | No numerical chat-health metric or automatic new-thread creation available; procedure depends on periodic reviews and commits | ACTIVE; `AGENTS.md`, `docs/CHAT_CONTINUITY.md`, `tracking/HANDOFF.md` |
 
 ## New decision template
 
