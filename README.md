@@ -2,9 +2,16 @@
 
 **Anatomically constrained, label-efficient segmentation of the cavum septum pellucidum (CSP) in high-resolution T2-weighted brain MRI.**
 
-**Project:** CPS 843 Computer Vision final project · **Started:** 2026-11-13 · **Status:** Data extracted; registration/localization not yet implemented.  
-**Submission deadline in provided course instructions:** **2026-12-14, 11:59 PM** (a different date mentioned in discussion remains unconfirmed).  
-**Scope:** Independent of the ventricular morphometry and blast-exposure research projects.
+**Project:** Independent, long-term CSP segmentation research program with a CPS 843 Computer Vision final-project deliverable · **Started:** 2026-11-13 · **Status:** Data extracted; registration/localization not yet implemented.  
+**Course checkpoint:** **2026-12-14, 11:59 PM** per supplied course guidelines (a different date mentioned in discussion remains unconfirmed). **This is not the research project's end date.**  
+**Scope:** Independent of the ventricular morphometry and blast-exposure research projects; designed with future thesis/publication-grade work and cross-dataset reproducibility in mind.
+
+## Two horizons: research program and course deliverable
+
+- **Research program (open-ended):** Build, validate and extend a reproducible CSP localization/segmentation method; prioritize anatomical validity, independent evaluation, longitudinal improvements, robustness and future external-dataset testing. Thesis/publication-grade quality is an aspiration, **not a claim of completed validation**.
+- **CPS 843 course submission (December 2026):** A bounded, accurately documented snapshot of what has actually been implemented and tested by the submission deadline. Partial results, limitations and unfinished phases are acceptable to report transparently; the course deadline must **not** force scientifically unsound shortcuts or be described as the project's completion.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for separation of milestones.
 
 ## Research question
 
