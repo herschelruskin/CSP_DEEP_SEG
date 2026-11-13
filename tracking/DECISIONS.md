@@ -14,6 +14,8 @@ Log every scientific or engineering choice and link to confirming tests. Update 
 | D-008 | 2026-11-13 | **Defer comprehensive manual MRI QC** in first pass; use HCP release QC as provisional baseline plus programmatic file/geometry checks, pilot ROI inspection, and review of annotation cases | ~1,100 unique subjects are infeasible to inspect individually under the first-pass timeline | HCP release does not guarantee local CSP quality; subtle motion, contrast and ROI failures may remain undetected | ACTIVE FIRST-PASS POLICY; flag failures, revisit QC if observed issues or evaluation patterns indicate need |
 | D-009 | 2026-11-13 | Treat the **December 2026 CPS 843 submission as an interim milestone**, not CSP_DEEP_SEG's end date | Project is intended as a longer-term, potentially thesis/publication-grade research effort; methods and independent evaluation should outlast class deadlines | Limited first-pass deliverables may not yet establish full generalization or publication readiness | ACTIVE SCOPE POLICY; document verified course results separately from longer-term milestones |
 
+| D-010 | 2026-11-13 | Prioritize a **minimal, scientifically defensible proof of concept** for the course, deferring general-purpose tooling, external-cohort robustness and optional architectural complexity | First-pass deadline is tight; demonstrate a working validated method before expanding scope | A preliminary POC cannot establish publication-level accuracy or cross-dataset generalization | ACTIVE; see `docs/ROADMAP.md`, continue development beyond course milestone |
+
 ## New decision template
 
 ```text
