@@ -11,6 +11,7 @@ Log every scientific or engineering choice and link to confirming tests. Update 
 | D-005 | 2026-11-13 | Build **small 3D U-Net** before lightweight attention hybrid | Scientifically meaningful baseline, limited labels and compute | Attention may offer benefit, but not assumed | PLANNED |
 | D-006 | 2026-11-13 | Target **~120 manual masks**, subject/family controlled | Feasible annotation throughput reported; stronger train/val/test coverage than a tiny set | Annotation QC time and ambiguous anatomy; number not statistically optimized | PLANNED, adapt to pilot |
 | D-007 | 2026-11-13 | Keep raw HCP images out of public Git | Data-use terms, storage and reproducibility separation | External storage requires durable manifest/hashes | ACTIVE POLICY |
+| D-008 | 2026-11-13 | **Defer comprehensive manual MRI QC** in first pass; use HCP release QC as provisional baseline plus programmatic file/geometry checks, pilot ROI inspection, and review of annotation cases | ~1,100 unique subjects are infeasible to inspect individually under the first-pass timeline | HCP release does not guarantee local CSP quality; subtle motion, contrast and ROI failures may remain undetected | ACTIVE FIRST-PASS POLICY; flag failures, revisit QC if observed issues or evaluation patterns indicate need |
 
 ## New decision template
 
