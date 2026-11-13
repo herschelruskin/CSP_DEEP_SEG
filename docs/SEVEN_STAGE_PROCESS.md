@@ -1,7 +1,9 @@
 # Seven-stage implementation protocol
 
-**Protocol:** CSP-PIPELINE-001 · **Version:** 0.1.0 · **Date:** 2026-11-13  
+**Protocol:** CSP-PIPELINE-001 · **Version:** 0.1.1 · **Date:** 2026-11-13  
 **Status vocabulary:** `DONE-VERIFIED` = logged test with evidence; `DONE-REPORTED` = user reports completion but not independently audited; `IN-PROGRESS`; `PENDING`; `BLOCKED`; `CONDITIONAL`.
+
+**Scope note:** These seven stages define the **long-term research pipeline**. The December 2026 CPS 843 deliverable is an interim, evidence-based progress report—not the deadline for full seven-stage completion. Future thesis/publication-grade work may extend the pipeline and its validation requirements. See [ROADMAP.md](ROADMAP.md).
 
 ## Project-wide invariants
 
@@ -97,7 +99,7 @@
 
 **Evaluation.** Patient-level Dice for nonempty reference masks; absolute volume error in mm³; signed volume bias; sensitivity of detecting visible CSP; false-positive voxel volume and false positives on genuinely absent/unresolvable cases; HD95 or surface distance only when valid for tiny masks; localization coverage; inference latency and memory. Report per-subject distributions, segmentation-size strata with predefined cutoffs, confidence intervals/bootstrap resampling by subject (and family if possible), and tri-planar qualitative error examples. For an empty reference, do **not** silently assign Dice=1 to empty predictions; report an explicit empty-case policy.
 
-**Tests / acceptance.** `VAL-01` test partition untouched until final; `VAL-02` metric sanity checks on synthetic masks; `VAL-03` exact pipeline re-run from versioned config; `VAL-04` manual review of false positives/negatives; `VAL-05` uncertainty intervals and limitations; `VAL-06` figures/tables reproducible from results scripts. **Gate:** scientifically honest, independently tested result set suitable for IEEE 4–6 page report.
+**Tests / acceptance.** `VAL-01` test partition untouched until final; `VAL-02` metric sanity checks on synthetic masks; `VAL-03` exact pipeline re-run from versioned config; `VAL-04` manual review of false positives/negatives; `VAL-05` uncertainty intervals and limitations; `VAL-06` figures/tables reproducible from results scripts. **Gate:** independently tested results with defensible methods, uncertainty and failure analysis. An interim subset may be documented in the December 2026 IEEE course report; full research validation remains a separate later milestone.
 
 **Artifacts.** Locked predictions, aggregate tables, comparison figures, limitations, final report. **State:** `PENDING`.
 
