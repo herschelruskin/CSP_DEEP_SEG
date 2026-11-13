@@ -1,6 +1,6 @@
 # Progress tracker — CSP_DEEP_SEG
 
-**Last updated:** 2026-11-13 · **Snapshot:** documentation created; no registration, ROI or model results yet.
+**Last updated:** 2026-11-13 · **Snapshot:** documentation created; no registration, ROI or model results yet. **December 2026 is a CPS 843 interim checkpoint, not project completion.**
 
 | Step | Status | What we have | What remains | Gate / next proof |
 |---|---|---|---|---|
@@ -11,6 +11,11 @@
 | 5. Models | **PENDING** | Classical, 3D U-Net and bottleneck-attention TransUNet planned | Implement fair baselines and memory tests | `MOD-01..05` |
 | 6. Training | **PENDING** | Label-efficient extension considered | Train-only normalization/splits, seed/optimizer configs, logs | `TRN-01..05` |
 | 7. Validation | **PENDING** | Dice + volume/error/failure evaluation planned | Locked test set, manual review and statistical intervals | `VAL-01..06` |
+
+## Milestone horizons
+
+- **Course checkpoint — December 2026:** report the verified progress and experiments available by the CPS 843 deadline; incomplete stages remain open. Course report is a snapshot, not the project's endpoint.
+- **Long-term research — after the course submission:** continue full seven-stage development, reference annotation quality, comparative and label-efficient modeling, robust independent evaluation, and eventual external-dataset generalization. The scientific standard is not reduced by the coursework schedule.
 
 ## Next action queue (in priority order)
 
@@ -30,3 +35,4 @@
 | 2026-11-13 | User reports all T2s extracted; 1,689 scans, 0.7 mm isotropic | Conversation report; local audit not attached | Stage 1 extraction reported, QC not yet closed |
 | 2026-11-13 | Seven-stage approach agreed, ANTs rigid proposed | Architecture discussion | Stage 2 remains unimplemented |
 | 2026-11-13 | Git-ready starter docs created | This commit / package | Tracking initialized; no scientific claims verified |
+| 2026-11-13 | Clarified course deadline versus long-term research scope | User clarification; D-009 | December course submission is an interim milestone; research continues |
