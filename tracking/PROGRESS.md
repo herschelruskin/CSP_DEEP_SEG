@@ -17,6 +17,11 @@
 - **Course checkpoint — December 2026:** report the verified progress and experiments available by the CPS 843 deadline; incomplete stages remain open. Course report is a snapshot, not the project's endpoint.
 - **Long-term research — after the course submission:** continue full seven-stage development, reference annotation quality, comparative and label-efficient modeling, robust independent evaluation, and eventual external-dataset generalization. The scientific standard is not reduced by the coursework schedule.
 
+## Continuity and handoff status
+
+- **2026-11-13:** Established [../AGENTS.md](../AGENTS.md), [../docs/CHAT_CONTINUITY.md](../docs/CHAT_CONTINUITY.md), living [HANDOFF.md](HANDOFF.md), and the first dated handoff archive.
+- **Next session prerequisite:** Read the current handoff and verify GitHub HEAD before implementing the Stage 2 pilot. Split into short, bounded chats and refresh the handoff at milestones.
+
 ## Next action queue (in priority order)
 
 - [ ] `DATA-01` count **unique subjects and per-subject SPC1/SPC2**, not just acquisitions.
@@ -36,3 +41,4 @@
 | 2026-11-13 | Seven-stage approach agreed, ANTs rigid proposed | Architecture discussion | Stage 2 remains unimplemented |
 | 2026-11-13 | Git-ready starter docs created | This commit / package | Tracking initialized; no scientific claims verified |
 | 2026-11-13 | Clarified course deadline versus long-term research scope | User clarification; D-009 | December course submission is an interim milestone; research continues |
+| 2026-11-13 | Adopted early chat sharding and persistent Markdown handoffs | AGENTS.md; CHAT_CONTINUITY.md; HANDOFF.md; D-011 | Context continuity becomes a documented workflow rather than relying on transcript recall |
