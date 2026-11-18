@@ -6,6 +6,15 @@
 |---|---|---|---|---|---|---|
 | — | — | — | — | — | **NO VERIFIED REAL-DATA EXECUTIONS YET** | — |
 
+## Conversation-observed / user-reported activity (NOT VERIFIED as reproducible repository tests)
+
+| Event | Date | Inputs / command context | Evidence level | Limitation and follow-up |
+|---|---|---|---|---|
+| Synthetic ANTsPy registration + 2-subject real HCP T2 rigid smoke test | 2026-11-17 | Local Docker `ventricle-antspy:0.1`; fixed 100206 / moving 100307 at ~2 mm; rigid affine later applied to original 0.7 mm moving image | USER-REPORTED local outputs and Slicer observation | Need actual command/config, transform-direction round-trip, registration metrics and reproducible bundle; not REG-02 (20-case) pass |
+| Slicer candidate ROI on 2 subjects | 2026-11-17 | Approx. 15.3 mm LR × 59.8 mm AP × 19.2 mm SI | CONVERSATION-OBSERVED visual exploratory placement | Not ROI-01/02 pass; no quantitative mask containment or held-out cases |
+| Processed HCP FreeSurfer ventricular labels | 2026-11-17 | One HCP case: aparc+aseg labels 4/43 extracted; FreeSurfer CSP label 72 yielded zero voxels | Python-console output USER-REPORTED | CSP absence not inferred; processed-to-native geometry unverified |
+| HCP filename inventory and Quick Log import | 2026-11-17 | Local directory CSV imported into Google Sheets; 1,689 unique scan keys from 1,113 subjects | CONNECTOR-RECONCILED filename inventory | Data-01 *filename census* only; not MRI file checksum/full decode/QC |
+| Triangular CSP manual review | 2026-11-17 | ≥20 subjects user-reported; first checkpoint 19 present, 1 absent | USER-REPORTED local annotation | Need native-mask files and actual QC-pass count; no Dice/test split |
 ## Test registry
 
 | Identifier | Purpose | Minimum outcome |
