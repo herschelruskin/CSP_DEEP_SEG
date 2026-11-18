@@ -2,7 +2,7 @@
 
 **Anatomically constrained, label-efficient segmentation of the cavum septum pellucidum (CSP) in high-resolution T2-weighted brain MRI.**
 
-**Project:** Independent, long-term CSP segmentation research program with a CPS 843 Computer Vision final-project deliverable · **Started:** 2026-11-13 · **Status:** Data extracted; registration/localization not yet implemented.  
+**Project:** Independent, long-term CSP segmentation research program with a CPS 843 Computer Vision final-project deliverable · **Started:** 2026-11-13 · **Status (2026-11-18):** 1,113-subject filename inventory reconciled; ≥20 manual subjects reported; two-case rigid-registration smoke test observed; localization and model training not validated.  
 **Course checkpoint:** **2026-12-14, 11:59 PM** per supplied course guidelines (a different date mentioned in discussion remains unconfirmed). **This is not the research project's end date.**  
 **Scope:** Independent of the ventricular morphometry and blast-exposure research projects; designed with future thesis/publication-grade work and cross-dataset reproducibility in mind.
 
@@ -17,17 +17,17 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for separation of milestones.
 
 Can we automatically localize and accurately segment the small, variable CSP cavity using anatomical constraints and a lightweight 3D segmentation model, while reducing the amount of expert segmentation required?
 
-**Planned models:** classical T2 intensity/anatomy baseline; small 3D U-Net; lightweight 3D TransUNet-style hybrid. A semi-supervised extension using unlabeled scans is conditional on a working, independently evaluated supervised baseline. These are proposed methods, **not results**.
+**Current modeling priority:** raw-T2 anatomical septal crop plus a small **2.5D U-Net**, followed by comparison against a lightweight **coarse anatomical-region detector → native-resolution segmenter**. Small 3D U-Net, TransUNet/attention, rigid alignment and semi-supervision remain potential ablations, **not validated results**. [Current state and avenues](docs/CURRENT_STATE.md).
 
 ## Seven-stage workflow
 
 | # | Stage | Outcome | Current state |
 |---|---|---|---|
-| 1 | T2 acquisition, extraction & QC | Reproducible inventory of valid, native T2 scans | **Extracted, QC incomplete** |
-| 2 | Rigid alignment | Validated 6-DOF transform from each T2 to a stable reference | **Next** |
-| 3 | Parcellation / CSP ROI localization | High-resolution, ventricular-relative 3D search crop | **Planned** |
-| 4 | Manual reference labels (parallel) | Anatomically defined labels with train/validation/test provenance | **Planned** |
-| 5 | Model construction | Comparable classical, U-Net and hybrid TransUNet implementations | **Planned** |
+| 1 | T2 acquisition, extraction & QC | Inventory of native T2 scans | **1,689 acquisitions / 1,113 unique subject IDs in filename manifest; integrity/QC open** |
+| 2 | Rigid alignment (candidate) | Pilot ANTs low-res transform vs no-registration | **Synthetic + 2-subject smoke test reported; 20-subject comparison not run** |
+| 3 | Anatomical ROI localization | Complete native-resolution septal search crop | **Two-case exploratory ROI only; containment not validated** |
+| 4 | Manual triangular CSP labels (parallel) | Native T2 masks and absent/uncertain reference cases | **≥20 subjects reported as of Nov 17; boundaries/QC under review** |
+| 5 | Model construction | Fixed-crop 2.5D U-Net baseline then coarse-to-fine localization | **Design selected for pilot; not implemented or trained in repository** |
 | 6 | Training | Reproducible supervised runs; optional label-efficient variants | **Planned** |
 | 7 | Manual + statistical validation | Independent test-set Dice, volume error, failure/QC analysis | **Planned** |
 
@@ -35,22 +35,24 @@ Can we automatically localize and accurately segment the small, variable CSP cav
 **Single source of truth for progress:** [tracking/PROGRESS.md](tracking/PROGRESS.md).  
 **For every fresh AI-assisted work session:** start with [AGENTS.md](AGENTS.md), then [tracking/HANDOFF.md](tracking/HANDOFF.md). See [docs/CHAT_CONTINUITY.md](docs/CHAT_CONTINUITY.md) for early-sharding and verified handoff rules.
 
-## Confirmed vs. unverified (2026-11-13)
+## Current operational snapshot (2026-11-18)
 
-- **USER-REPORTED:** 1,689 T2 acquisitions extracted from HCP-YA structural archives; all reported as **0.7 mm isotropic** on an initial geometry audit.
-- **USER-REPORTED:** Multiple T2 acquisitions exist for some subjects (`SPC1` and `SPC2`). **1,689 is a scan count, not an independent participant count.** Unique subject count has not been reconciled against the file manifest.
-- **OBSERVED IN CONVERSATION:** HCP subject `100206` shows a plausible small midline CSF cavity in three planes after display window/level adjustment; this is **not** a verified reference mask.
-- **NOT YET VERIFIED:** complete archive checksum audit, full NIfTI decoding across all scans, label SOP, registration accuracy, crop coverage, segmentation accuracy, or model performance.
+- **Filename census:** A local CSV manifest and live Google Sheet reconciliation yielded **1,689 distinct acquisitions from 1,113 subjects**, hence **576 repeat acquisitions**. Quick Log now shows one **SPC1 per subject**; SPC2 remain archived as possible QC fallbacks. This is **not** a full NIfTI integrity audit.
+- **Manual annotation:** User reported **20+ subjects** reviewed by Nov 17; first checkpoint **19 positive / one absent** for triangular CSP. Current saved-mask and QC-pass counts must be audited; anatomy for some inferior/ovoid-looking cavities remains **uncertain**. Only triangular/anterior CSP is in scope for the first experiment.
+- **Alignment:** ANTsPy Docker synthetic and two-subject low-res rigid **smoke tests** occurred locally (100206 fixed; 100307 moving). No validated cohort-wide registration. Individual septal anatomy remains variable despite rigid global alignment.
+- **Localization:** A generous fixed midline crop was explored on two scans, not shown to cover a held-out population. Processed HCP ventricular labels (4/43) were inspected as coarse anatomical references; missing FreeSurfer label 72 is **not** proof of CSP absence.
+- **Next technical path:** audit local masks and freeze annotation SOP; evaluate a **raw-T2 fixed anatomical crop** for complete-CSP containment; train first small **2.5D U-Net**; compare fairly with a **learned coarse anatomical localizer**. Only then consider 3D/TransUNet, registration, self-supervision or more elaborate methods.
+- **Compute:** Intel Iris Xe work laptop for annotation/CPU pipeline tests; home RTX 2060 Super for first GPU models; Alliance/Compute Canada as needed. **No trained model or Dice result is logged.**
 
-## Immediate next task — Stage 2 pilot
+**Living details and progression options:** [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md).
 
-1. Freeze a **20-acquisition pilot list** with unique subject identifiers and a mix of SPC1/SPC2, without putting raw HCP data into Git.
-2. Choose and version a fixed T2 reference. Subject `100206` is a **pilot option**, not yet the final template.
-3. Test a no-registration ROI baseline against **ANTs rigid-only alignment** estimated on temporary ~2 mm isotropic images (original 0.7 mm images remain unchanged).
-4. Save only rigid transforms, registration QC metrics, commands, software versions and later the **native-resolution ROI**, not whole-brain registered copies.
-5. Inspect orthogonal views and document whether the predicted crop encloses the full septal/CSP search area. Do **not** scale to 1,689 scans until the pilot gate passes.
+## Immediate next task — mask audit and first segmentation baseline
 
-**Current pilot specification:** [docs/REGISTRATION_PILOT.md](docs/REGISTRATION_PILOT.md).
+1. Inventory native-T2 segmentations saved locally and reconcile the real number of **complete, empty and QC-needs-review** masks against subject identifiers.
+2. Version a **triangular-only anatomical segmentation SOP**, especially lower septal/fornix ambiguity and cavum-vergae boundaries; do not coerce uncertain masks into ground truth.
+3. Define a simple native-T2 septal crop in physical millimetres and measure positive-mask **complete containment** and margins. Keep absent cases locatable without a visible CSP.
+4. Implement a 2.5D U-Net smoke test and subject-disjoint first training run on available compute. Compare the same segmenter with a learned coarse region detector only after baseline results.
+5. Log actual commands, configs, software versions, masks/splits, metrics and failures; keep private HCP data out of this repository.
 
 ## Tracking and reproducibility
 
@@ -91,4 +93,4 @@ D:\CSP_DEEP_SEG\
 - [ANTs documentation](https://github.com/ANTsX/ANTs) (rigid registration to be tested, not yet implemented)
 - [TransUNet](https://doi.org/10.1016/j.media.2024.103280) (candidate model family; no CSP-specific performance presumed)
 
-See [docs/PROJECT_CONTROLS.md](docs/PROJECT_CONTROLS.md) for evidence standards and reporting conventions.
+See [docs/PROJECT_CONTROLS.md](docs/PROJECT_CONTROLS.md) for evidence standards and reporting conventions. The prior seven-stage plan remains a long-term framework; its initial numerical annotation target and registration-first ordering are **superseded for the first proof of concept** by the current staged baseline.
