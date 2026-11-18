@@ -1,7 +1,17 @@
 # Roadmap — coursework proof of concept and longer-term research
 
-**Updated:** 2026-11-13  
+**Updated:** 2026-11-18  
 **Scope policy:** CSP_DEEP_SEG is a long-term research project. The December 2026 CPS 843 final-project submission is an **interim proof-of-concept checkpoint**, not an endpoint or a claim of clinical/publication readiness.
+
+## Current November 2026 implementation priority
+
+**Use [CURRENT_STATE.md](CURRENT_STATE.md) and [tracking/PROGRESS.md](../tracking/PROGRESS.md) for latest status.** The earlier rigid-first and 3D/TransUNet-first stages below are **historical candidates** and no longer mandatory critical-path prerequisites for the first class-project experiment.
+
+- **Now:** triangular CSP only, native HCP 0.7-mm T2 masks, at least 20 manually reviewed subjects reported Nov 17 (initial 19 positive, one absent); approximately 50 is the next *practical* initial annotation goal, not a universal threshold. Require mask geometry audit and review of ambiguous lower/ovoid/fornix-related cavities before fine-segmentation ground truth.
+- **First feasibility model:** simple **raw-T2 septal crop + lightweight 2.5D U-Net**. On ~20 subjects, evaluate engineering feasibility, not robust population performance; only one absent sample at the initial checkpoint prevents a credible estimate of negative specificity.
+- **Second comparison:** lightweight coarse model predicts the *anatomical septal region*, regardless of CSP presence; crop native-resolution original T2 and apply the same segmenter. Measure complete CSP containment, failure cases, runtime and positive/negative outcomes versus the fixed-crop baseline.
+- **Retained alternatives:** anatomically guided ventricular landmarks, low-resolution ANTs rigid or affine alignment, compact 3D U-Net, TransUNet/attention or semi-supervised use of unlabeled HCP T2, **only after relevant baseline evidence**. Existing two-subject rigid smoke test is not a validated localization method.
+- **Compute:** development/labeling on Intel Iris Xe laptop; first CUDA runs on RTX 2060 Super; Alliance cluster for larger experiments.
 
 ## Horizon A — first-pass proof of concept (CPS 843)
 
@@ -10,10 +20,10 @@
 Keep this implementation **simple and evidence-led**:
 
 1. **Data:** Use the already-extracted HCP T2 acquisitions. Reconcile subject-vs-acquisition counts and run essential automated integrity/geometry checks; rely provisionally on HCP's existing acquisition QC rather than manually inspecting the full cohort.
-2. **Alignment:** Pilot a simple native-affine locator against low-resolution ANTs rigid alignment on ~20 scans. Choose based on measured crop coverage, failure modes and runtime—not because ANTs is customary.
+2. **Alignment/localization comparison:** Start with a native-T2 septal crop and measure complete-reference-mask containment; compare against low-resolution ANTs rigid alignment or ventricular landmarks *if* the simple baseline misses cases.
 3. **Localization:** Make a generous 3D septal ROI in physical coordinates; verify anatomical coverage in the pilot without imposing unnecessary full-brain parcellation or nonlinear registration.
-4. **Manual masks:** Establish a concise CSP anatomical labeling SOP; collect reliable native-space labels in parallel. The ~120 annotation target is an **initial research planning figure**, not a requirement to complete the coursework POC. Preserve subject/family partitions.
-5. **Models:** Implement a compact, technically defensible baseline (classical or 3D U-Net) before adding a lightweight TransUNet-style hybrid if time and measurements support doing so.
+4. **Manual masks:** Focus on triangular CSP only, freeze anatomic stopping rules, and audit/QC native masks. Approximately 50 is the next practical first-pass target, while ~120 remains a longer-term adaptable planning figure. Preserve subject/family partitions.
+5. **Models:** Implement compact **2.5D U-Net on native-T2 anatomical crops** first, then compare a coarse learned septal-region detector with the same fine segmenter. Small 3D U-Net and TransUNet-style hybrid remain optional follow-on architectures.
 6. **Training:** Produce at least one fully reproducible training run. Optional semi-supervision and large-scale unlabeled pretraining are **not prerequisites** for the first-pass result.
 7. **Evaluation:** Use untouched manual test cases, Dice where defined, volume errors in mm³ and honest failure analysis. The December report should describe actual evidence, whether results are preliminary or partial.
 
