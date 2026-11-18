@@ -1,44 +1,44 @@
 # Current handoff — CSP_DEEP_SEG
 
-**Updated:** 2026-11-13  
-**Purpose:** Small, current, independently usable project-state summary for starting a fresh chat. Rewrite after each milestone. Keep history in dated `tracking/handoffs/` files.
+**Updated:** 2026-11-18. **Repository:** https://github.com/herschelruskin/CSP_DEEP_SEG · **Branch:** main (re-read HEAD at session start). **Primary status source:** [CURRENT_STATE](../docs/CURRENT_STATE.md) and [PROGRESS](PROGRESS.md).
 
-## Repository and project scope
+## Goal and scope
 
-- Repository: https://github.com/herschelruskin/CSP_DEEP_SEG
-- Branch: `main`. **At the next chat start, fetch HEAD; do not rely on the SHA from this snapshot after further commits.**
-- Long-term goal: Automated, anatomically defensible CSP segmentation in high-resolution T2 MRI, later adaptable to other cohorts.
-- Immediate course horizon: CPS 843 **preliminary proof of concept** due in December 2026 according to supplied guidelines; **not** the long-term project's endpoint.
-- Workflow: 1 extraction/QC → 2 rigid registration → 3 CSP ROI localization; 4 manual labels in parallel; then 5 models → 6 training → 7 independent validation.
+Create a robust, eventually cross-dataset **triangular CSP** detector/segmenter in original HCP 3T T2 MRIs (~0.7 mm isotropic). December 2026 CPS 843 is only a preliminary proof-of-concept checkpoint; written project instructions indicate **December 14, 23:59**, verify if updated. Preserve scientifically sound ground truth and future thesis/publication extensibility.
 
-## State of evidence
+## What we actually have
 
-- **USER-REPORTED:** HCP Young Adult T2 images extracted from ZIPs on a Windows local drive, totaling **1,689 acquisitions**, all 0.7 mm isotropic; some subjects have `SPC1` and `SPC2` scans. Number of distinct participants has **not** been independently reconciled. Do not treat 1,689 as independent subjects.
-- **USER-REPORTED / PRELIMINARY:** One T2 example (subject 100206) was visually reviewed and appeared suitable for identifying a septal cavity after display windowing; no validated segmentation from that observation.
-- **POLICY:** For initial POC, provisionally rely on HCP release-level MRI QC, plus automated file/geometry checks, 20–30 registration/ROI pilot checks and targeted label QC; do not manually review all participants.
-- **DESIGN PROVISIONAL:** Low-resolution (~2 mm) rigid alignment (ANTs candidate) against a stable T2 reference, compared to simpler affine-only crop placement. Map ROI to native 0.7 mm T2 using physical transforms; avoid full-brain registered image copies.
-- **NOT IMPLEMENTED / NOT RUN:** Rigid registration, cropped ROI, manual reference mask set for this project, model training, Dice evaluation and full NIfTI integrity audit.
-- **ANNOTATION PLAN, NOT COMMITMENT:** Approximately 120 manually labeled subjects is a research planning target, not a course POC gate; write a formal anatomical labeling SOP and lock subject/family-disjoint splits.
+- **Inventory reconciled from local CSV/Google Sheets:** 1,689 distinct acquisition keys; 1,113 unique HCP subject IDs; 576 repeat acquisitions. Quick Log presents SPC1 per subject and preserves all SPC2 entries in a private hidden acquisition backup. Counts describe filenames, not full file-integrity QC.
+- **Annotations:** user reported ≥20 reviewed/manual-mask subjects on 2026-11-17, initially 19 triangular-CSP present and one absent. More were potentially labeled afterward; exact current number of saved QC-pass masks **UNKNOWN** until auditing local files. Slicer manual native-T2 segmentation; status dropdowns Present / Absent / Uncertain, Complete and QC. Rough masks are useful for localization but must be reviewed before serving as fine-boundary reference.
+- **Anatomy blocker:** recurring ambiguous lower/ovoid-looking anterior midline CSF regions, occasionally seemingly connected/disconnected from superior cavity across adjacent coronal slices. Do not declare separate cavity types from shape; assess relation to septal leaflets, fornix body/columns and adjacent CSF spaces. Posterior cavum vergae is not defined by inferior position. Flag **Needs review** where uncertain; freeze reproducible triangular-only SOP.
+- **ANTs pilot:** user ran synthetic plus two-subject 2 mm rigid T2 smoke tests in local Docker image `ventricle-antspy:0.1`; fixed 100206, moving 100307; applied estimated rigid transform to moving native 0.7 mm image. Files under local `D:\CSP_DEEP_SEG\registration_smoke_test\`. Gross alignment observed, but residual anatomical variability remains. Repo does not yet contain exact commands/logs, registration tests or programmatic outputs.
+- **Slicer ROI and HCP processing:** generous ~15.3 × 59.8 × 19.2 mm ROI considered overlarge/fragile from two examples, not validated across subjects. Processed `aparc+aseg` 4 and 43 delineated lateral ventricle vicinity for one subject; label 72 was absent despite visible candidate CSP. Processed labels are NOT CSP ground truth. Native T2 and processed-MNI images may not align without verified coordinate mapping.
+- **Implementation:** No committed runnable model/data pipeline, no training results, no measured Dice/specificity, no validated crop containment, no locked subject/family-disjoint split yet. Keep all claims bounded.
 
-## Next bounded workstream: Stage 2 registration pilot
+## Current architecture and alternatives
 
-1. Inspect actual local T2 manifest or ask user to provide a small de-identified sample/summary; reconcile unique subject count and scan names, check manifest geometry and missing/corrupt-file indicators.
-2. Select/version the fixed T2 reference and 20-acquisition pilot list. Design comparison: affine-only ROI vs 6-DOF ANTs rigid registration on temporary ~2 mm images. Preserve native inputs.
-3. Implement a minimal reproducible registration runner and forward/inverse coordinate test, then validate on accessible pilot data. Record command, ANTs version, runtime, failures and crop coverage. **Do not report successful execution until measured.**
+1. **First baseline:** raw native-T2 simple midline/septal anatomical ROI (physical-mm definition), then compact **2.5D U-Net** to predict triangular-CSP mask at 0.7 mm. This avoids obligatory FreeSurfer, SynthSeg or ANTs on every test case.
+2. **Second candidate:** small downsampled-T2 **coarse anatomical-region localizer**, trained to find where CSP should be even when absent, then crop original full-resolution native T2 and apply same segmenter. Focus on full-mask ROI containment and absent-case robustness, not perfect intersubject correspondence.
+3. **Only later if justified:** small 3D U-Net, transformer/TransUNet bottleneck, ventricular-landmark-guided localizer, verified rigid/affine registration, optional semi-supervised models. Fair ablations required.
 
-## Local environment constraints
+**Compute:** work laptop Intel Iris Xe for Slicer/CPU data prep; home RTX 2060 Super for first GPU 2.5D experiments; Alliance/Compute Canada for large 3D/sweeps.
 
-- HCP data are stored on the user's Windows PC in the `D:\CSP_DEEP_SEG\` hierarchy (e.g., `T2w\`). These images are not in GitHub or necessarily accessible in ChatGPT runtime.
-- Public GitHub must hold code, documentation, configs and aggregate non-sensitive evidence only; do not upload raw NIfTI volumes, masks or HCP ZIPs.
-- Windows GPU reportedly RTX 2060 Super (8 GB); Stage 2 rigid ANTs is CPU-bound. Alliance/Compute Canada is optional after local benchmark.
+## The next bounded task
 
-## Research records and operating rules
+1. Obtain actual local **segmentation mask directory + filenames** (private), and audit shape/affine match, mask count, number positive/empty, stray islands and any QC flag. Keep public GitHub aggregate-only.
+2. Resolve/freeze concise **triangular-only boundary SOP** with a few adjudicated unusual cases. Do not force questionable lower structures into positive/negative labels.
+3. Implement raw-T2 simple septal crop; test every available positive reference mask for **whole-mask containment** and margin, on development subjects only. Document failure cases.
+4. Implement same 2.5D segmenter on fixed crops; smoke-test on laptop CPU then transfer real training to GPU. Lock subject-level splits; reserve final holdout from tuning.
+5. Add learned coarse anatomical localizer only after baseline containment and segmentation are measured. Keep provenance of every run.
 
-- Read `AGENTS.md`, `docs/CHAT_CONTINUITY.md`, `docs/SEVEN_STAGE_PROCESS.md`, `docs/REGISTRATION_PILOT.md`, `tracking/PROGRESS.md` and `tracking/DECISIONS.md`.
-- Re-verify current GitHub commits, actual file contents and test logs rather than trusting this prose if contradicted by newer evidence.
-- Keep exchanges **piece by piece**, shard early, and update this handoff plus progress tracking before changing chats.
-- Decision register through **D-010**: T2-only, provisional rigid approach and downsampling, native ROI, baselines, tentative manual-label target, data restrictions, pragmatic QC, course-vs-research separation, POC-first approach.
+## Operating rules
 
-## Ready-to-copy next-chat prompt
+- Read `AGENTS.md`, `tracking/DECISIONS.md`, `tracking/PROGRESS.md`, `docs/CURRENT_STATE.md`, `docs/SEVEN_STAGE_PROCESS.md`; check actual GitHub HEAD.
+- Do not silently reinterpret 120 labels as an achieved count: first practical annotation milestone discussed is approximately 50, and a 20-case run would be proof-of-concept only.
+- Keep HCP MRI, masks, unredacted manifests and private Google Sheet URLs **out of GitHub**.
+- Do not claim the 20-subject ANTs validation, whole-mask ROI recall or first neural-network model as completed.
+- Early-shard complex chats and refresh this handoff/progress/docs after material milestones.
 
-Continue **CSP_DEEP_SEG** using https://github.com/herschelruskin/CSP_DEEP_SEG. First inspect **AGENTS.md**, **tracking/HANDOFF.md**, **tracking/PROGRESS.md**, and **tracking/DECISIONS.md**, verify current GitHub HEAD, then execute only the next bounded Stage 2 pilot task. Keep all claims evidence-based, keep the December 2026 course project separate from long-term research scope, log changes/tests to GitHub and produce an updated Markdown handoff before the chat becomes too long.
+## Next-chat start prompt
+
+Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AGENTS.md, docs/CURRENT_STATE.md, tracking/PROGRESS.md, tracking/DECISIONS.md, tracking/HANDOFF.md and verify HEAD. Focus on triangular CSP only; as of Nov 17 ≥20 manual masks reported, but verify current files/QC. First audit local masks, freeze inferior/fornix boundary SOP, implement raw-T2 septal ROI containment and compact 2.5D U-Net smoke test. Treat a learned coarse anatomical locator as comparison, not completed code. Keep reproducibility, subject/family splits and December course milestone vs long-term thesis distinct.
