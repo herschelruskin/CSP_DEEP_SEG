@@ -5,6 +5,15 @@
 
 **Scope note:** These seven stages define the **long-term research pipeline**. The December 2026 CPS 843 deliverable is an interim, evidence-based progress report—not the deadline for full seven-stage completion. Future thesis/publication-grade work may extend the pipeline and its validation requirements. See [ROADMAP.md](ROADMAP.md).
 
+## 2026-11-18 operational update (supersedes outdated stage-status labels below)
+
+Seven stages below remain the **long-term reference protocol**. For current work, see [CURRENT_STATE.md](CURRENT_STATE.md), [../tracking/PROGRESS.md](../tracking/PROGRESS.md), and [ROADMAP.md](ROADMAP.md). In particular:
+
+- **Stage 1:** a filename manifest has been reconciled at 1,689 acquisitions / 1,113 unique subject IDs / 576 extra acquisitions. **Full image integrity/QC is still open**.
+- **Stage 2:** a synthetic and two-subject low-resolution ANTsPy rigid smoke test was **reported locally**, not an independently verified 20-case pilot; a universal registration step is not mandatory for the first POC.
+- **Stage 3:** raw-T2 anatomical septal crop is first baseline; a **learned coarse anatomical region localizer** is planned for comparison. No validated whole-mask ROI containment result exists.
+- **Stage 4:** **triangular CSP only** for POC, ≥20 manual subjects reported as of 2026-11-17 with initial 19 present and one absent; current complete/QC-pass mask count not independently reconciled. ~50 is next practical development target; ~120 is a longer-term flexible target, not a fixed requirement. Fornix/inferior cavity stopping convention remains **under review**.
+- **Stages 5–7:** first test a **compact 2.5D U-Net** with a simple native-resolution crop, then compare to the coarse-to-fine cascade. 3D U-Net, TransUNet, self-supervision and larger runs are optional later. **No network has been trained or evaluated in the repo**.
 ## Project-wide invariants
 
 - **Immutable native-space data:** Raw T2 images and their NIfTI affines are never overwritten. All intensity scaling and spatial changes create derivatives with recorded provenance.
@@ -57,7 +66,7 @@
 
 ## 4 — Partial manual reference labeling (can run in parallel with 2–3)
 
-**Objective.** Create consistent reference masks in native T2 image space for a targeted, diverse subset, currently **~120 subjects** as a *planning* target, dependent on annotation and QC throughput.
+**Objective.** Create consistent reference masks in native T2 image space for a targeted, diverse subset, an adaptable longer-term **~120 subject** research planning target, with **~50** as the nearer first-pass goal and **≥20** user-reported as of 2026-11-17; subject counts/quality still require mask-audit confirmation.
 
 **Why.** Standard TransUNet supervised segmentation requires labels. Unlabeled images can support pretraining and semi-supervision, but cannot establish true CSP boundaries or validation accuracy by themselves.
 
@@ -73,7 +82,7 @@
 
 **Why.** A transformer is not automatically better at tiny objects. Low-resolution patch tokenization can erase a CSP; a U-Net baseline tests whether attention actually adds benefit. Both should receive the same standardized spatial input.
 
-**Models.** `BASE-0`: local T2 intensity + anatomical constraints/connected components; `BASE-1`: compact 3D U-Net; `HYBRID-1`: comparable 3D encoder/decoder with transformer attention at bottleneck and full-resolution skip connections. Track parameter count, receptive field, memory and inference time. Avoid claiming vanilla 2D TransUNet is already a validated 3D CSP model.
+**Models.** Current initial POC baseline: a small 2.5D U-Net on raw-native-T2 anatomical crops; comparative cascade: coarse learned septal-region localizer and the same high-resolution segmenter. Later: `BASE-0` local T2 intensity/anatomy, `BASE-1` compact 3D U-Net, and `HYBRID-1` 3D encoder/decoder with transformer bottleneck and full-resolution skip connections. Track parameter count, receptive field, memory and inference time. Avoid claiming vanilla 2D TransUNet is already a validated 3D CSP model.
 
 **Tests / acceptance.** `MOD-01` synthetic forward pass/output shape; `MOD-02` parameter count and VRAM; `MOD-03` tiny test-set overfit diagnostic on training cases only; `MOD-04` output-to-native geometry and empty-mask handling; `MOD-05` no withheld mask access. **Gate:** baseline and hybrid train end-to-end on a few training cases, produce valid probability maps and save versioned checkpoints.
 
@@ -105,7 +114,7 @@
 
 ## Dependencies, sequence, and stop conditions
 
-- Main sequence: **1 → 2 → 3 → 5 → 6 → 7**. **Stage 4 labels are parallel to 2–3** but must have a frozen anatomical protocol and feed into training/validation.
+- Long-term stage dependencies: **1 → localization (2 optional) → 3 → 5 → 6 → 7**. **Stage 4 labels are parallel to localization**, but require a frozen anatomical protocol before becoming fine-mask reference data. Native-T2 baseline need not wait for full ANTs deployment.
 - Stage 2 alone is not complete until Stage 3 demonstrates useful anatomical coverage.
 - Stop before bulk registration if inputs fail QC. Stop before training if masks/crops have mismatched geometry. Stop before publication if independent test data influenced method selection.
 - Every modification to crop dimensions, reference, intensity normalization or model definition creates a new versioned decision entry and relevant retesting.
