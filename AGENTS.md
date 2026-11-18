@@ -37,6 +37,7 @@ The handoff must be independently sufficient: current goal, tested vs untested f
 
 ## Current pointers
 
+- **Latest verified conversational snapshot and architectural directions:** `docs/CURRENT_STATE.md` (2026-11-18)
 - Seven stages: `docs/SEVEN_STAGE_PROCESS.md`
 - Two-horizon roadmap: `docs/ROADMAP.md`
 - Registration pilot: `docs/REGISTRATION_PILOT.md`
