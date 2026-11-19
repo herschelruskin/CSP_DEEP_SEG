@@ -50,3 +50,12 @@ Status: PASS | FAIL | INCONCLUSIVE
 Evidence artifacts and output SHA256:
 Issues and follow-up decision:
 ```
+
+## 2026-11-19: synthetic reduced-T2 crop geometry tests
+
+- **Test ID:** ROI-SYN-001; **Status:** VERIFIED LOCAL SYNTHETIC PYTEST ONLY.
+- **Command:** `pytest -q tests/test_reduce_t2_geometry.py` (run against source content later committed to `scripts/reduce_t2_slicer.py` and `tests/test_reduce_t2_geometry.py`).
+- **Result:** `4 passed in 0.60s` after fixing a percentile-threshold edge case on a constant-intensity synthetic foreground.
+- **Tested:** KJI array slicing and IJK-to-RAS origin shift, left-right-flipped anisotropic synthetic geometry, oblique ROI enclosure, whole-mask inclusion vs out-of-crop voxel, empty-mask handling, invalid settings and singular matrix rejection.
+- **Not tested:** 3D Slicer API end-to-end integration, actual `.nii.gz` saved spatial fields, HCP file loading, manual mask quality, real anatomical ROI containment, runtime/VRAM, or reliability across subjects. No real source data available in the testing runtime.
+- **Next test ID:** ROI-REAL-001: original HCP T2 -> saved reduced NIfTI -> reload -> physical-voxel mapping and trim containment check in Slicer, single subject first.
