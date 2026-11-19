@@ -373,13 +373,18 @@ def _read_manifest(manifest_csv):
 
 def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                                 include_provisional=True, foreground_cfg=CropSettings(),
-                                unlock_holdout=False, include_review_for_bounds=True):
+                                unlock_holdout=False, include_review_for_bounds=True,
+                                excluded_from_fit_ids=()):
     """Calibrate both candidates and evaluate DEV, HOLDOUT, and DEV-LOO.
 
     Review-flagged CSP-present masks contribute to *exploratory crop extrema*
     by default. Their QC remains needs_review: this is NOT approval for fine
     segmentation training. Missing/invalid masks still fail instead of being
     silently interpreted as absence.
+
+    excluded_from_fit_ids removes named subjects from the fitted envelope ONLY.
+    They are still loaded, measured, ranked and audited against the new rule.
+    This post-hoc outlier stress test is NOT an independent validation set.
 
     IMPORTANT: holdout rows are not opened by default. Set unlock_holdout=True
     once the rule is frozen to assess it independently, without further tuning.
@@ -390,6 +395,19 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     entries = _read_manifest(manifest_csv)
+    if isinstance(excluded_from_fit_ids, str):
+        excluded_ids = {excluded_from_fit_ids.strip()}
+    else:
+        excluded_ids = {str(value).strip() for value in excluded_from_fit_ids}
+    excluded_ids.discard('')
+    records_by_id = {row['subject_id'].strip(): row for row in entries}
+    unknown_ids = excluded_ids - set(records_by_id)
+    if unknown_ids:
+        raise ValueError('Unknown excluded_from_fit_ids: ' + ', '.join(sorted(unknown_ids)))
+    nondev_ids = {sid for sid in excluded_ids if
+                  records_by_id[sid].get('split', 'dev').strip().lower() not in ('', 'dev')}
+    if nondev_ids:
+        raise ValueError('Fit exclusions must be development subjects: ' + ', '.join(sorted(nondev_ids)))
     measures = []
     tests = []
     errors = []
@@ -441,6 +459,7 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
             data = measure_subject(img, affine, mask, pres, sid, foreground_cfg)
             data['qc'] = qc
             data['split'] = split
+            data['excluded_from_fit'] = sid in excluded_ids
             data['mask_path'] = mask_file
             data['notes'] = str(row.get('notes', '')).strip()
             measures.append(data)
@@ -457,7 +476,15 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
             if volume is not None:
                 slicer.mrmlScene.RemoveNode(volume)
 
-    dev = [m for m in measures if m['split'] == 'dev']
+    # Preserve all measured cases, but fit only on the selected development
+    # subset. Explicitly excluded cases remain in all-case evaluation outputs.
+    dev_observed = [m for m in measures if m['split'] == 'dev']
+    dev = [m for m in dev_observed if not m['excluded_from_fit']]
+    fit_excluded = [m for m in dev_observed if m['excluded_from_fit']]
+    missing_excluded = excluded_ids - {m['subject_id'] for m in fit_excluded}
+    if missing_excluded:
+        _report_csv(out/'errors.csv', errors)
+        raise ValueError('Fit-excluded subjects were not measured: ' + ', '.join(sorted(missing_excluded)))
     holdout = [m for m in measures if m['split'] == 'holdout']
     if not any(m['presence'] == 'present' for m in dev):
         _report_csv(out/'errors.csv', errors)
@@ -465,6 +492,8 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
     rules = {mode: fit_rule(dev, mode, margin_mm) for mode in MODES}
     for mode, rule in rules.items():
         rule['training_subjects'] = len(dev)
+        rule['excluded_from_fit_ids'] = sorted(excluded_ids)
+        rule['n_excluded_from_fit'] = len(fit_excluded)
         rule['heldout_subjects'] = len(holdout)
         rule['includes_provisional_qc'] = any(x['qc'] == 'provisional' for x in dev)
         rule['includes_needs_review_positive_masks'] = any(
@@ -477,6 +506,7 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                 result = evaluate_subject_rule(data, rule, affine, mask_ijk=mask_ijk)
                 result['split'] = data['split']
                 result['qc'] = data['qc']
+                result['excluded_from_fit'] = data['excluded_from_fit']
                 tests.append(result)
             except Exception as exc:
                 errors.append(dict(subject_id=data['subject_id'], error='Rule evaluation: '+str(exc)))
@@ -485,7 +515,8 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
     # for an independent holdout, but reveals how frequently extrema are driven by
     # one unusual individual (such as an unusually large CSP).
     loo = []
-    dev_positives = [x for x in cached if x[0]['split'] == 'dev' and x[0]['presence'] == 'present']
+    dev_positives = [x for x in cached if x[0]['split'] == 'dev' and
+                     not x[0]['excluded_from_fit'] and x[0]['presence'] == 'present']
     if len(dev_positives) >= 2:
         for data, affine, mask_ijk in dev_positives:
             training = [m for m in dev if m['subject_id'] != data['subject_id']]
@@ -504,6 +535,7 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                     key=lambda m: m['mask_volume_mm3'], reverse=True)
     _report_csv(out/'largest_csp_ranked.csv', [
         dict(rank=i, subject_id=m['subject_id'], qc=m['qc'], split=m['split'],
+             excluded_from_fit=m['excluded_from_fit'],
              volume_mm3=m['mask_volume_mm3'], voxels=m['mask_voxels'],
              RAS_span_mm=[float(b-a) for a,b in zip(m['mask_ras_lo'], m['mask_ras_hi'])],
              lr_distance_mm=m['lr_mm'], notes=m['notes'])
@@ -516,7 +548,13 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                    if len(non_review_dev) != len(dev) and any(
                        m['presence'] == 'present' for m in non_review_dev) else None)
     manifest_summary = dict(n_manifest=len(entries), n_read=len(measures),
-                            n_errors=len(errors), n_dev=len(dev), n_holdout_evaluated=len(holdout),
+                            n_errors=len(errors), n_dev=len(dev),
+                            n_dev_measured=len(dev_observed),
+                            excluded_from_fit_ids=sorted(excluded_ids),
+                            n_excluded_from_fit=len(fit_excluded),
+                            all_positive_read=sum(m['presence']=='present' for m in measures),
+                            all_absent_read=sum(m['presence']=='absent' for m in measures),
+                            n_holdout_evaluated=len(holdout),
                             n_holdout_reserved=len(withheld),
                             dev_positive=sum(m['presence']=='present' for m in dev),
                             dev_absent=sum(m['presence']=='absent' for m in dev),
@@ -530,7 +568,8 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                         summary=manifest_summary,
                         foreground_cfg=asdict(foreground_cfg)), indent=2)+'\n', encoding='utf-8')
     print('[ROI CALIBRATION] Written:', out)
-    print('  dev:', len(dev), 'holdout reserved:', len(withheld),
+    print('  dev fitted:', len(dev), 'outlier fit-excluded but evaluated:',
+          len(fit_excluded), 'holdout reserved:', len(withheld),
           'holdout evaluated:', len(holdout), 'errors:', len(errors))
     print('  ranked largest positive CSP:', ranked[0]['subject_id'] if ranked else 'none')
     print('  This is not approved for whole-cohort deployment without QC and holdout.')
