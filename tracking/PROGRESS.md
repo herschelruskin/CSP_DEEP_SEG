@@ -89,3 +89,7 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 - `proportional` scales with robust **head foreground dimensions**, not actual cranial/brain segmentation and not yet a fitted midsagittal symmetry plane. Compare against `fixed_mm`; no unsupported claim of intracranial normalization.
 - Generates `subject_measurements.csv`, `largest_csp_ranked.csv`, `calibrated_rules.json`, `rule_evaluations.csv`, `leave_one_subject_out.csv`, `errors.csv`; protected holdouts are not even loaded without explicit unlock; an optional batch cropper starts with `limit=3`.
 - Synthetic tests **15 passed** on local Python/pytest (9 new cohort-calibration cases + six existing crop tests). Slicer runtime and full HCP cohort were **NOT RUN** here; actual mask folder, five absent IDs, ~13 review flags and subject/family grouping remain local dependencies. See `docs/ROI_CALIBRATION.md` and `tracking/TEST_LOG.md`.
+
+### 2026-11-19 local path correction
+- User identified actual CSP manual segment directory as `D:\CSP_DEEP_SEG\CSP_Seg` with subject-ID files, not `D:\CSP_DEEP_SEG\masks`; raw T2 directory `D:\CSP_DEEP_SEG\T2w\<ID>\` confirmed.
+- Manifest candidate-suffix matcher extended to `.nifti` (in addition to normal NIfTI extensions); **no cohort manifest/calibration outcome yet verified**, and whether Slicer opens a literal `.nifti` suffix needs checking. For local ZIP, update the script before use if that suffix applies.
