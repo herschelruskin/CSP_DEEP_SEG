@@ -263,3 +263,67 @@ def test_review_flagged_large_positive_contributes_to_envelope(tmp_path, monkeyp
     audits = list(csv.DictReader((tmp_path/'result'/'rule_evaluations.csv').open()))
     assert len(audits) == 4
     assert all(row['whole_mask_contained'] == 'True' for row in audits)
+
+
+def test_fit_excludes_outlier_but_keeps_its_measurement_ranking_and_audit(tmp_path, monkeypatch):
+    """Post-hoc outlier exclusion cannot hide a real mask from auditing."""
+    im, aff = toy()
+    masks = {
+        '100206': positive_roi(im.shape, k0=24, k1=32, j0=54, j1=60, i0=49, i1=59),
+        '100307': positive_roi(im.shape, k0=23, k1=31, j0=52, j1=62, i0=48, i1=60),
+        '108828': positive_roi(im.shape, k0=7, k1=48, j0=20, j1=78, i0=27, i1=86),
+    }
+    manifest = tmp_path / 'manifest.csv'
+    with manifest.open('w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=calibration.FIELDS)
+        writer.writeheader()
+        for sid, qc in [('100206', 'pass'), ('100307', 'pass'),
+                        ('108828', 'needs_review')]:
+            src = tmp_path / f'{sid}_3T_T2w_SPC1.nii.gz'
+            src.touch()
+            writer.writerow(dict(subject_id=sid, presence='present', qc=qc, split='dev',
+                                 source_t2=str(src), mask_path=f'{sid}.nii'))
+    class Volume:
+        def GetParentTransformNode(self): return None
+    fake_slicer = types.SimpleNamespace(
+        util=types.SimpleNamespace(loadVolume=lambda *a, **kw: Volume(),
+                                   arrayFromVolume=lambda volume: im),
+        mrmlScene=types.SimpleNamespace(RemoveNode=lambda node: None))
+    monkeypatch.setitem(sys.modules, 'slicer', fake_slicer)
+    monkeypatch.setattr(calibration, '_slicer_ijk_to_ras', lambda volume: aff)
+    monkeypatch.setattr(calibration, '_load_reference_mask',
+                        lambda path, volume, segment_id, label_value: masks[Path(path).stem])
+    out = tmp_path / 'outlier_excluded'
+    r = calibration.calibrate_roi_from_manifest(
+        manifest, out, margin_mm=5, excluded_from_fit_ids=('108828',))
+    assert r['summary']['n_read'] == 3
+    assert r['summary']['n_dev'] == 2
+    assert r['summary']['n_excluded_from_fit'] == 1
+    assert r['summary']['all_positive_read'] == 3
+    assert r['summary']['dev_positive'] == 2
+    for rule in r['rules'].values():
+        assert rule['training_positive_count'] == 2
+        assert rule['excluded_from_fit_ids'] == ['108828']
+    ranked = list(csv.DictReader((out / 'largest_csp_ranked.csv').open()))
+    assert ranked[0]['subject_id'] == '108828'
+    assert ranked[0]['excluded_from_fit'] == 'True'
+    evaluations = list(csv.DictReader((out / 'rule_evaluations.csv').open()))
+    assert len(evaluations) == 6
+    assert len([x for x in evaluations if x['subject_id'] == '108828']) == 2
+    assert all(x['excluded_from_fit'] == 'True'
+               for x in evaluations if x['subject_id'] == '108828')
+    loo = list(csv.DictReader((out / 'leave_one_subject_out.csv').open()))
+    assert len(loo) == 4
+    assert set(x['subject_id'] for x in loo) == {'100206', '100307'}
+
+
+def test_unknown_fit_exclusion_cannot_silently_do_nothing(tmp_path):
+    manifest = tmp_path / 'manifest.csv'
+    with manifest.open('w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=calibration.FIELDS)
+        w.writeheader()
+        w.writerow(dict(subject_id='100206', presence='present', qc='pass', split='dev',
+                        source_t2='unused'))
+    with pytest.raises(ValueError, match='Unknown excluded_from_fit_ids'):
+        calibration.calibrate_roi_from_manifest(
+            manifest, tmp_path / 'out', excluded_from_fit_ids=('NOT_A_SUBJECT',))
