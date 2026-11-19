@@ -69,3 +69,7 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 
 ### 2026-11-19 Slicer API compatibility fix
 - Local user smoke test failed before crop calculation: `GetReferenceActiveVolumeID()` is not a Slicer getter. Updated `reduce_active_t2` to prefer Red slice background, with `GetActiveVolumeID()` fallback. 6/6 local synthetic/API-mock tests passed; real T2 save/reload remains **NOT RUN**.
+
+### 2026-11-19 first real HCP reduced T2 output (USER-REPORTED)
+- Local Slicer execution with direct Red-background-volume workaround generated `114217_3T_T2w_SPC1_reduced.nii.gz`, source KJI 320×320×256 → 262×252×123; 31.0% voxels retained. JSON geometry record and Slicer output volume node reported.
+- **Not yet validated:** mask containment, anatomical safety, visual overlap, disk reload geometry, cross-subject generalizability. Run a cropped-native-voxel and world-coordinate check and tri-planar review before batch processing. The local extracted scaffold may still have the old Slicer API bug even though GitHub has the fix.
