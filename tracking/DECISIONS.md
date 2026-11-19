@@ -43,3 +43,5 @@ Expected benefit and tradeoffs:
 Criteria to revisit:
 Code/config/protocol version:
 ```
+
+| D-019 | 2026-11-19 | **PROPOSED:** evaluate an HCP processed-LV-derived septal ROI *before* building a frontal-horn network; compare with native-T2 simple box | First prove ventricular geometry permits reliable complete-CSP containment, then justify learning only if it improves the baseline | Whole-LV labels are not horn masks; raw/processed mappings and test-set independence must be validated | DESIGN REVIEW ONLY, NOT YET IMPLEMENTED OR ACCEPTED; see `docs/FRONTAL_HORN_ROI_FEASIBILITY_2026-11-19.md` |
