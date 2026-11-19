@@ -73,3 +73,8 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 ### 2026-11-19 first real HCP reduced T2 output (USER-REPORTED)
 - Local Slicer execution with direct Red-background-volume workaround generated `114217_3T_T2w_SPC1_reduced.nii.gz`, source KJI 320×320×256 → 262×252×123; 31.0% voxels retained. JSON geometry record and Slicer output volume node reported.
 - **Not yet validated:** mask containment, anatomical safety, visual overlap, disk reload geometry, cross-subject generalizability. Run a cropped-native-voxel and world-coordinate check and tri-planar review before batch processing. The local extracted scaffold may still have the old Slicer API bug even though GitHub has the fix.
+
+### 2026-11-19 proposed 114217 aggressive crop pilot (NOT RUN)
+- Initial 31%-retained crop in user's axial screenshot appears overly broad for the thin midline CSP search task; this is qualitative evidence of excess background, **not** proof of safe anatomical margins.
+- Proposed isolated folder `D:\CSP_DEEP_SEG\derived\reduced_t2_aggressive_test` and settings: LR half-width 22 mm; posterior/anterior trims 35%/20%; inferior/superior trims 35%/20%. Original raw T2 remains the input and is not overwritten.
+- **Must verify:** true CSP whole-mask coverage in each plane, including posterior/inferior boundaries, native coordinates, six-face margins and subject variation. No real mask audit has been run for this preset. See D-021.
