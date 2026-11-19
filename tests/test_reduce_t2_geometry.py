@@ -80,3 +80,47 @@ def test_settings_and_singularity_checks():
     with pytest.raises(ValueError):
         calculate_crop(image, np.zeros((4, 4)))
 
+
+def test_reduce_active_t2_uses_red_background_instead_of_invalid_selection_getter(monkeypatch):
+    """Regression test for Slicer selection-node GetReferenceActiveVolumeID bug."""
+    import sys
+    import types
+    import reduce_t2_slicer as module
+
+    volume = object()
+    class FakeLayer:
+        def GetVolumeNode(self):
+            return volume
+    class FakeRed:
+        def sliceLogic(self):
+            return types.SimpleNamespace(GetBackgroundLayer=lambda: FakeLayer())
+    class FakeLayout:
+        def sliceWidget(self, name):
+            assert name == 'Red'
+            return FakeRed()
+    fake_app = types.SimpleNamespace(layoutManager=lambda: FakeLayout())
+    fake_slicer = types.SimpleNamespace(app=fake_app)
+    monkeypatch.setitem(sys.modules, 'slicer', fake_slicer)
+    monkeypatch.setattr(module, 'reduce_volume_t2', lambda source_node, output_dir, **kw: (source_node, output_dir, kw))
+    result = module.reduce_active_t2('output')
+    assert result[0] is volume
+    assert result[1] == 'output'
+    assert result[2]['keep_output_in_scene'] is True
+
+
+def test_reduce_active_t2_fallback_supported_selection_getter(monkeypatch):
+    import sys
+    import types
+    import reduce_t2_slicer as module
+
+    volume = object()
+    class FakeSelection:
+        def GetActiveVolumeID(self):
+            return 'vtkMRMLScalarVolumeNode1'
+    app = types.SimpleNamespace(
+        layoutManager=lambda: None,
+        applicationLogic=lambda: types.SimpleNamespace(GetSelectionNode=lambda: FakeSelection()))
+    scene = types.SimpleNamespace(GetNodeByID=lambda node_id: volume if node_id == 'vtkMRMLScalarVolumeNode1' else None)
+    monkeypatch.setitem(sys.modules, 'slicer', types.SimpleNamespace(app=app, mrmlScene=scene))
+    monkeypatch.setattr(module, 'reduce_volume_t2', lambda source_node, output_dir, **kw: source_node)
+    assert module.reduce_active_t2('output') is volume
