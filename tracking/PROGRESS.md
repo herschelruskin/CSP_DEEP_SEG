@@ -93,3 +93,9 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 ### 2026-11-19 local path correction
 - User identified actual CSP manual segment directory as `D:\CSP_DEEP_SEG\CSP_Seg` with subject-ID files, not `D:\CSP_DEEP_SEG\masks`; raw T2 directory `D:\CSP_DEEP_SEG\T2w\<ID>\` confirmed.
 - Manifest candidate-suffix matcher extended to `.nifti` (in addition to normal NIfTI extensions); **no cohort manifest/calibration outcome yet verified**, and whether Slicer opens a literal `.nifti` suffix needs checking. For local ZIP, update the script before use if that suffix applies.
+
+### 2026-11-19 local cohort-manifest reconciliation (USER-REPORTED + CONNECTOR-READ; masks not audited)
+- User's `make_roi_manifest` run discovered **64 masks** and reported 64 `present`, 0 `absent`, 0 `uncertain`; this is due to mask-based discovery with empty/nonpopulated status/absence inputs, **not** a validated 64/0 prevalence estimate.
+- Read user's live Quick Log first 70 reviewed cases: **65 present, 5 absent**; **13** `Needs review` flags. Matching the 64 discovered mask IDs against the reviewed entries revealed **one additional present subject without a discovered mask**. No auto-absence inference.
+- Generated a private 70-row `cohort_status_from_quick_log.csv` plus absent/review ID text files (delivered in chat, **not committed publicly**) for `make_roi_manifest(..., status_csv=...)`. Initial status CSV: 54 provisional present, 2 provisional absent, 10 flagged present, 3 flagged absent, plus 1 additional present flagged because its mask is missing. All splits are **TEMPORARILY dev**, not heldout/family-safe.
+- Crucial: very large CSP candidates in Quick Log are among `Needs review`; calibration currently skips these until adjudicated, so **do not treat resulting extrema as safely representing the largest CSP**. Real crop-bound fitting remains **NOT RUN**.
