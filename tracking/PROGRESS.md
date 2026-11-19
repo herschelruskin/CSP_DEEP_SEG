@@ -78,3 +78,8 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 - Initial 31%-retained crop in user's axial screenshot appears overly broad for the thin midline CSP search task; this is qualitative evidence of excess background, **not** proof of safe anatomical margins.
 - Proposed isolated folder `D:\CSP_DEEP_SEG\derived\reduced_t2_aggressive_test` and settings: LR half-width 22 mm; posterior/anterior trims 35%/20%; inferior/superior trims 35%/20%. Original raw T2 remains the input and is not overwritten.
 - **Must verify:** true CSP whole-mask coverage in each plane, including posterior/inferior boundaries, native coordinates, six-face margins and subject variation. No real mask audit has been run for this preset. See D-021.
+
+### 2026-11-19 data-derived standardized ROI proposal (NOT RUN)
+- Next geometry experiment should calculate per-QC-positive CSP mask left/right deviations from an estimated per-person midline, plus AP/SI extrema *normalized to corresponding subject brain/foreground bounds*, not the raw image center.
+- Aggregate development-subject extreme coordinates, convert to one common set of crop rules and add a physical safety margin. The rule adapts to individuals' head sizes/positions, without a learned locator; reserve subject/family held-out subjects for independent containment testing. Confirmed absent scans must still obtain valid crops; ~13 anatomical-review cases cannot silently enter definitive reference set.
+- Current crop generator uses coarse thresholded *head foreground*, not a true brain mask or fitted midsagittal plane; robust brain bounds and LR symmetry are candidates to compare before refining the preset.
