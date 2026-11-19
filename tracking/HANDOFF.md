@@ -42,3 +42,9 @@ Create a robust, eventually cross-dataset **triangular CSP** detector/segmenter 
 ## Next-chat start prompt
 
 Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AGENTS.md, docs/CURRENT_STATE.md, tracking/PROGRESS.md, tracking/DECISIONS.md, tracking/HANDOFF.md and verify HEAD. Focus on triangular CSP only; as of Nov 17 ≥20 manual masks reported, but verify current files/QC. First audit local masks, freeze inferior/fornix boundary SOP, implement raw-T2 septal ROI containment and compact 2.5D U-Net smoke test. Treat a learned coarse anatomical locator as comparison, not completed code. Keep reproducibility, subject/family splits and December course milestone vs long-term thesis distinct.
+
+## 2026-11-19 planning update — frontal-horn ROI (supersedes older count, not older experimental evidence)
+
+- **USER-REPORTED:** 70 reviews, 65 CSP present, 5 absent; ~13 anatomically flagged. Local mask geometry, saved mask counts and QC-pass counts not verified. The annotation-status spreadsheet field is no longer maintained and is not completion evidence.
+- **NEW DESIGN REVIEW ONLY:** [Frontal-horn ROI feasibility](../docs/FRONTAL_HORN_ROI_FEASIBILITY_2026-11-19.md). HCP preprocessed `aparc+aseg` label 4/43 is whole LV, not frontal horn; raw→processed correspondence is unverified. Avoid learned-localizer training until an oracle-style geometry crop and a simple raw-T2 crop are tested for whole positive-CSP containment.
+- **NEXT SMALL ACTION:** match 5–10 raw and HCP-processed subjects, verify spatial transforms and inspect horn subregions; audit raw CSP masks; implement native-space ROI containment and exact crop roundtrip on development cases. Tests NOT RUN; no model trained.
