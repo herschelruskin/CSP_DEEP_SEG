@@ -25,7 +25,7 @@ Can we automatically localize and accurately segment the small, variable CSP cav
 |---|---|---|---|
 | 1 | T2 acquisition, extraction & QC | Inventory of native T2 scans | **1,689 acquisitions / 1,113 unique subject IDs in filename manifest; integrity/QC open** |
 | 2 | Rigid alignment (candidate) | Pilot ANTs low-res transform vs no-registration | **Synthetic + 2-subject smoke test reported; 20-subject comparison not run** |
-| 3 | Anatomical ROI localization | Complete native-resolution septal search crop | **Two-case exploratory ROI only; containment not validated** |
+| 3 | Anatomical ROI localization | Complete native-resolution septal search crop | **Geometry-only native-T2 crop script committed Nov 19; synthetic tests pass; HCP containment not validated** |
 | 4 | Manual triangular CSP labels (parallel) | Native T2 masks and absent/uncertain reference cases | **≥20 subjects reported as of Nov 17; boundaries/QC under review** |
 | 5 | Model construction | Fixed-crop 2.5D U-Net baseline then coarse-to-fine localization | **Design selected for pilot; not implemented or trained in repository** |
 | 6 | Training | Reproducible supervised runs; optional label-efficient variants | **Planned** |
