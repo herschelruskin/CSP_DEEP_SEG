@@ -1,0 +1,2 @@
+# One HCP subject ID per line, for clinically reviewed CSP-absent cases.
+# Missing masks are never automatically interpreted as absent.
