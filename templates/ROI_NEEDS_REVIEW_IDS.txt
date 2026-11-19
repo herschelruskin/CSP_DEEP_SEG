@@ -1,0 +1,2 @@
+# One HCP subject ID per line for unresolved anatomical annotations.
+# These are excluded from definitive calibration until reviewed.
