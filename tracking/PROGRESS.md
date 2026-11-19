@@ -66,3 +66,6 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 - **TESTED LOCALLY on synthetic NumPy arrays:** `pytest -q tests/test_reduce_t2_geometry.py` — **4 passed**, using synthetic scalar arrays, flipped/aniso/oblique image matrices, positive/empty reference masks and invalid configuration checks. This does **not** validate Slicer integrations, output NIfTI serialization, real HCP scan quality, or containment on the 70 user-reviewed subjects.
 - **NOT RUN:** first real Slicer crop of a native HCP T2, save/reload voxel+affine check, manual-mask and QC reconciliation, six-face containment on development cases, batch full-cohort processing, and segmentation training. Do not bulk-run or use for model training until these checks pass.
 - Default preliminary crop: coarse foreground RAS center; LR half-width 35 mm; conservative fraction-based AP/SI trimming. All cuts **provisional**. See [usage and limitations](../docs/REDUCED_T2_CROP.md).
+
+### 2026-11-19 Slicer API compatibility fix
+- Local user smoke test failed before crop calculation: `GetReferenceActiveVolumeID()` is not a Slicer getter. Updated `reduce_active_t2` to prefer Red slice background, with `GetActiveVolumeID()` fallback. 6/6 local synthetic/API-mock tests passed; real T2 save/reload remains **NOT RUN**.
