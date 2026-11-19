@@ -42,7 +42,9 @@ def _subject_id(path):
 
 def _mask_candidate(path):
     name = path.name.lower()
-    return (name.endswith(('.seg.nrrd', '.nii.gz', '.nii', '.nrrd'))
+    # Accept .nifti spelling as well as the standard .nii/.nii.gz suffixes.
+    # Slicer must still be able to read the file as a real NIfTI label volume.
+    return (name.endswith(('.seg.nrrd', '.nii.gz', '.nii', '.nifti', '.nrrd'))
             and not name.endswith(('_reduced.nii.gz', '_t2w.nii.gz')))
 
 
