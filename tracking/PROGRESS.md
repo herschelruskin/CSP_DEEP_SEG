@@ -117,3 +117,8 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
   - **Proportional:** LR half width 0.124323 of foreground LR span; AP 0.127236–0.663198 of foreground AP span; SI 0.480660–0.619645 of SI span. Median retained volume **5.97%**.
   - **LOO:** 1 missed positive mask out of 65 for each mode; same single case. This is an internal robustness check, NOT untouched validation; all 70 subjects were used in original fitting.
 - Next: identify which of six reference-space extrema set each face; inspect LOO missed mask's per-face clearance and annotation/foreground geometry, plus the impact of the very large boundary-uncertain mask on box dimensions. Avoid auto-tightening AP or reducing 8mm margin until face-specific tests and new-subject validation.
+
+### 2026-11-19 post-hoc 108828 exclusion experiment (IMPLEMENTED; COHORT RERUN PENDING)
+- User elected to **exclude 108828 (2200.0 mm³)** from *standard ROI crop boundary fitting only*, preserving the entire 70-subject dataset and explicit QC. Next largest are 107321=203.4, 101309=200.3, 102008=155.7, 107725=102.6 mm³; no prevalence estimate among 1,113 HCP participants can be inferred from these.
+- Added `excluded_from_fit_ids` to `calibrate_roi_from_manifest`; still loads/measures/evaluates 108828, keeps its row in ranked and evaluation CSV, and flags exclusion. LOO restricted to remaining 64 fit positives. Original all-inclusive results preserved by using `results_excluding_108828` output directory. This is a post-hoc sensitivity experiment, not an independent holdout.
+- **Local synthetic tests:** 19/19 passed on updated script + outlier regression cases (existing 17 + two). No user real-data rerun of exclusion candidate yet.
