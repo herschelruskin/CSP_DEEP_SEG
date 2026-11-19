@@ -103,3 +103,17 @@ The manifest must distinguish CSP `presence` from anatomical-boundary `qc`. A su
 `calibrated_rules.json` stores the review-flagged positive count and a `sensitivity_excluding_review` comparison so it is clear how much these cases enlarge the box. This **does not promote their boundaries to approved ground truth for segmentation training**. It is only a conservative exploratory localization test. Preserve untouched subject/family-disjoint test data before making population claims.
 
 For users with the previous Slicer file loaded, replace `scripts/calibrate_csp_roi_slicer.py` with the corrected version, then reload the module in the Slicer console. Rebuild the manifest with the existing explicit absence and review ID lists: expected 65 present / 5 absent / 0 uncertain when matching all 70 user-reported subjects. This is a target count, not a verified real-data result.
+
+## 2026-11-19 outlier-excluded standard crop pilot
+
+The first real HCP calibration read **70/70** original T2/mask pairs without computational errors: 65 CSP-positive, 5 CSP-absent (zero volume), 10 flagged positive masks still included and 13 review flags overall. Entire cohort was development; **no independent held-out cases**.
+
+The extremely large subject **108828** has reported native CSP labelmap volume **2200.0 mm³**, while next-largest masks were 107321=203.4, 101309=200.3, 102008=155.7 and 107725=102.6 mm³. The user elected to remove 108828 from fitting the *standard* crop, not from the cohort, measurement archive or mask evaluation. This is a post-hoc geometry sensitivity test, NOT a random held-out validation set and NOT evidence that 108828 is anatomically nonexistent. The full 65-positive all-inclusive run remains as a comparator.
+
+Updated command (after reloading the latest script inside Slicer):
+```python
+result = c.calibrate_roi_from_manifest(str(d/'cohort_manifest.csv'), str(d/'results_excluding_108828'), margin_mm=8.0, include_review_for_bounds=True, excluded_from_fit_ids=('108828',))
+```
+This produces normal `calibrated_rules.json`, `subject_measurements.csv`, `rule_evaluations.csv`, `largest_csp_ranked.csv`, and `leave_one_subject_out.csv` inside a new directory without modifying the all-inclusive results. The primary rules fit **64 positive masks + 5 absent**, while still **measuring, ranking, and auditing all 70** cases; the excluded subject is marked `excluded_from_fit=True` in measurement/audit/rank reports. Leave-one-out applies to **64 fit-positive** masks, not the excluded case. With no kept-aside subjects, do not call the 108828 diagnostic or these LOO results independent validation.
+
+Check the retained median crop fraction, six-face margins, retained CSP voxel fraction for 108828 (possibly less than 100% by design), and whether other subjects set crop extrema. Preserve original `results` to compare the full and trimmed envelope. Independent testing must use newly acquired/unseen family-disjoint subjects.
