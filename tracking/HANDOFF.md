@@ -61,3 +61,8 @@ Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AG
 - **VERIFIED (synthetic only):** 4/4 NumPy/pytest tests pass; confirm native array crop, shifted physical geometry, oblique bounds, positive vs empty-mask logic, invalid-parameter rejection. Track in `tracking/TEST_LOG.md`.
 - **NOT VERIFIED:** Slicer console execution, save/reload NIfTI geometry, CSP safety margins for actual HCP subjects, source-mask geometry and QC counts; **do not bulk process** until verified on the local workstation.
 - **NEXT ACTION:** paste the one-line command from [run instructions](../docs/REDUCED_T2_CROP.md) into Slicer with one original T2 loaded; visually compare original/reduced volume in all planes; reload saved NIfTI and check world-space alignment, then audit QC-approved positive CSP masks on development subjects. Expand to batch `limit=3` only after the single-scan check.
+
+### Slicer active-volume API fix (2026-11-19)
+- **Observed error:** local `reduce_active_t2` failed on nonexistent `vtkMRMLSelectionNode.GetReferenceActiveVolumeID()`.
+- **Patched GitHub script:** now accesses Red slice background volume or falls back to `GetActiveVolumeID`. The user downloaded an older ZIP under `D:\CSP_DEEP_SEG\CSP_reduced_T2_crop_scaffold`; it must be replaced with patched file or bypass `reduce_active_t2` using `reduce_volume_t2(slicer.app.layoutManager().sliceWidget('Red').sliceLogic().GetBackgroundLayer().GetVolumeNode(), output_dir, keep_output_in_scene=True)`.
+- **Verified:** 6 local synthetic / mocked-Slicer tests pass. **Not yet verified:** actual Slicer crop generation on one HCP T2, persistence of geometry in saved/reloaded NIfTI, whole-CSP reference mask containment.
