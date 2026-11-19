@@ -82,3 +82,9 @@ Issues and follow-up decision:
 - **FIX:** presence is explicit `absent` when listed, otherwise `present` for mask-discovered rows unless overridden by an explicit status CSV; review only changes `qc`. Calibration now accepts `qc=needs_review` positive masks for *exploratory* envelope fitting (default) while preserving sensitivity excluding them.
 - **VERIFIED LOCAL SYNTHETIC TESTS:** `python -m pytest -q` in `/mnt/data/csp_roi_calibration`, **17 passed in 0.71s**. New regression tests assert that a review-listed mask remains positive, the large review-flagged mask expands the fit, ranking preserves its QC, and sensitivities are recorded.
 - **NOT RUN:** real-data 70-subject rerun; no claim of true CSP containment or accurate manual boundaries.
+
+## ROI-OUTLIER-001 — 2026-11-19
+- Rationale: User explicitly selected atypically large 108828 (2200 mm³) for exclusion from standard crop fitting, but not from measurement or audit.
+- Source implementation `scripts/calibrate_csp_roi_slicer.py`: new `excluded_from_fit_ids` argument; validates ID and dev designation, fits on remaining development masks, preserves excluded case in `subject_measurements.csv`, `largest_csp_ranked.csv`, `rule_evaluations.csv`, and does not include it in LOO training.
+- **Local verification:** `python -m pytest -q` in `/mnt/data/csp_roi_outlier_patch`: 19 passed in 0.76 s. New regression test models a large outlier and asserts it is absent from fit but still audited/ranked; another prevents silently ignoring an unknown excluded ID.
+- **Not yet run on real 70 subjects:** output crop dimensions and missed-mask rates for outlier-excluded fit. 108828 was examined before selection and hence is not a valid independent test case.
