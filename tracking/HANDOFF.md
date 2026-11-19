@@ -54,3 +54,10 @@ Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AG
 **ACTIVE DESIGN DIRECTION:** Do not start frontal-horn extraction/network training first. Implement and evaluate a **simple orientation-aware, generous midline crop** on raw HCP T2: start from image axis geometry/rough centered brain bounds; refine a midsagittal plane with symmetry only if needed; trim anterior/posterior/superior/inferior conservatively in physical mm. Preserve native 0.7-mm array and coordinate mapping. User wants cheapest fast, easily validated search-space reduction, not precise CSP localization.
 
 **NEXT EXPERIMENT (NOT RUN):** reconcile saved masks, native affines and QC status; freeze development/held-out family-aware split; test six-face positive-mask containment plus minimum physical margins and absent-case valid crops. Do not claim arbitrary percentages/cuts guarantee full coverage. Frontal-horn reference/learned localization is deferred unless failure analysis merits it. See D-020.
+
+## 2026-11-19 scaffold now committed — next execution on local Slicer
+
+- **CODE NOW EXISTS:** [Slicer cropper](../scripts/reduce_t2_slicer.py), [four synthetic unit tests](../tests/test_reduce_t2_geometry.py), [run instructions](../docs/REDUCED_T2_CROP.md). Committed on `main` after prior D-020 decision. No installed models or HCP images in Git.
+- **VERIFIED (synthetic only):** 4/4 NumPy/pytest tests pass; confirm native array crop, shifted physical geometry, oblique bounds, positive vs empty-mask logic, invalid-parameter rejection. Track in `tracking/TEST_LOG.md`.
+- **NOT VERIFIED:** Slicer console execution, save/reload NIfTI geometry, CSP safety margins for actual HCP subjects, source-mask geometry and QC counts; **do not bulk process** until verified on the local workstation.
+- **NEXT ACTION:** paste the one-line command from [run instructions](../docs/REDUCED_T2_CROP.md) into Slicer with one original T2 loaded; visually compare original/reduced volume in all planes; reload saved NIfTI and check world-space alignment, then audit QC-approved positive CSP masks on development subjects. Expand to batch `limit=3` only after the single-scan check.
