@@ -202,3 +202,64 @@ def test_holdout_cannot_be_inspected_without_unlock(tmp_path, monkeypatch):
         calibration.calibrate_roi_from_manifest(manifest,tmp_path/'out')
     assert not (tmp_path/'out'/'subject_measurements.csv').exists()
 
+
+def test_review_flag_is_qc_not_presence(tmp_path):
+    """A review flag on a saved CSP must not erase its positive status."""
+    for sid in ('100206', '100307'):
+        t2 = tmp_path / 'T2w' / sid
+        t2.mkdir(parents=True)
+        (t2 / f'{sid}_3T_T2w_SPC1.nii.gz').touch()
+    masks = tmp_path / 'CSP_Seg'
+    masks.mkdir()
+    (masks / '100206.nii').touch()
+    (masks / '100307.nii').touch()
+    review = tmp_path / 'needs_review_ids.txt'
+    review.write_text('100206\n')
+    rows = calibration.make_roi_manifest(tmp_path/'T2w', masks, tmp_path/'manifest.csv',
+                                         review_ids_file=review)
+    entry = next(row for row in rows if row['subject_id'] == '100206')
+    assert entry['presence'] == 'present'
+    assert entry['qc'] == 'needs_review'
+
+
+def test_review_flagged_large_positive_contributes_to_envelope(tmp_path, monkeypatch):
+    """An unusual large positive expands the main rule and keeps the QC label."""
+    im, aff = toy()
+    normal = positive_roi(im.shape)
+    unusual = positive_roi(im.shape, k0=7, k1=48, j0=20, j1=78,
+                           i0=27, i1=86)
+    masks = {'100206': normal, '100307': unusual}
+    manifest = tmp_path / 'manifest.csv'
+    with manifest.open('w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=calibration.FIELDS)
+        writer.writeheader()
+        for sid, qc in (('100206', 'pass'), ('100307', 'needs_review')):
+            source = tmp_path / f'{sid}_3T_T2w_SPC1.nii.gz'
+            source.touch()
+            writer.writerow(dict(subject_id=sid, presence='present', qc=qc,
+                                 split='dev', source_t2=str(source),
+                                 mask_path=f'{sid}.nii'))
+    class Volume:
+        def GetParentTransformNode(self): return None
+    fake_slicer = types.SimpleNamespace(
+        util=types.SimpleNamespace(loadVolume=lambda *a, **kw: Volume(),
+                                   arrayFromVolume=lambda volume: im),
+        mrmlScene=types.SimpleNamespace(RemoveNode=lambda node: None))
+    monkeypatch.setitem(sys.modules, 'slicer', fake_slicer)
+    monkeypatch.setattr(calibration, '_slicer_ijk_to_ras', lambda volume: aff)
+    monkeypatch.setattr(calibration, '_load_reference_mask',
+                        lambda path, volume, segment_id, label_value: masks[Path(path).stem])
+    result = calibration.calibrate_roi_from_manifest(manifest, tmp_path/'result', margin_mm=5)
+    assert result['summary']['dev_positive'] == 2
+    assert result['summary']['dev_positive_needs_review'] == 1
+    assert result['rules']['fixed_mm']['training_positive_count'] == 2
+    rules_file = json.loads((tmp_path/'result'/'calibrated_rules.json').read_text())
+    assert rules_file['rules']['fixed_mm']['includes_needs_review_positive_masks']
+    assert rules_file['sensitivity_excluding_review']['fixed_mm']['training_positive_count'] == 1
+    assert rules_file['rules']['fixed_mm']['lr_half_width'] > rules_file['sensitivity_excluding_review']['fixed_mm']['lr_half_width']
+    ranked = list(csv.DictReader((tmp_path/'result'/'largest_csp_ranked.csv').open()))
+    assert ranked[0]['subject_id'] == '100307'
+    assert ranked[0]['qc'] == 'needs_review'
+    audits = list(csv.DictReader((tmp_path/'result'/'rule_evaluations.csv').open()))
+    assert len(audits) == 4
+    assert all(row['whole_mask_contained'] == 'True' for row in audits)
