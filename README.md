@@ -6,6 +6,11 @@
 **Course checkpoint:** **2026-12-14, 11:59 PM** per supplied course guidelines (a different date mentioned in discussion remains unconfirmed). **This is not the research project's end date.**  
 **Scope:** Independent of the ventricular morphometry and blast-exposure research projects; designed with future thesis/publication-grade work and cross-dataset reproducibility in mind.
 
+
+## 2026-11-19: data-derived CSP search-space calibration (implemented, not validated on HCP masks)
+
+The [Slicer ROI calibration scaffold](docs/ROI_CALIBRATION.md) now measures per-subject CSP mask extremes in native physical coordinates, ranks the largest masks, and fits/compares **fixed-mm** and **head-foreground-proportional** crops with tunable physical safety margins. It supports `.seg.nrrd` and native labelmap masks, explicit absent and review flags, partial/provisional QC, subject holdout isolation and geometry/containment reports. Input T2/masks remain on the local computer; **no real 70-subject calibration output has been generated in this repository**. The reported Nov 19 annotation status is **70 reviewed / 65 present / 5 absent**, with approximately 13 anatomy-review flags and QC not independently audited. Synthetic tests only: `15 passed` using Python/pytest outside Slicer. See [Stage 3 protocol](docs/ROI_CALIBRATION.md) for commands and limitations.
+
 ## Two horizons: research program and course deliverable
 
 - **Research program (open-ended):** Build, validate and extend a reproducible CSP localization/segmentation method; prioritize anatomical validity, independent evaluation, longitudinal improvements, robustness and future external-dataset testing. Thesis/publication-grade quality is an aspiration, **not a claim of completed validation**.
