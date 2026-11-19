@@ -64,3 +64,9 @@ Issues and follow-up decision:
 - **USER-REPORTED FAILURE:** `reduce_active_t2` raised `AttributeError` because `vtkMRMLSelectionNode` has no `GetReferenceActiveVolumeID` getter, on local Slicer in `D:\CSP_DEEP_SEG\CSP_reduced_T2_crop_scaffold`.
 - **FIX IMPLEMENTED:** select background volume from Red slice view, falling back to supported `GetActiveVolumeID`; direct `reduce_volume_t2(source_node, ...)` also bypasses selection lookup.
 - **TESTS VERIFIED LOCALLY:** 6/6 synthetic/monkeypatched pytest tests pass (four prior geometry tests + two API regression tests); full Slicer runtime save/reload and actual HCP ROI validation remain **NOT RUN**.
+
+## ROI-REAL-001 — 2026-11-19 initial HCP output (USER-REPORTED)
+- **PARTIAL PASS / validation incomplete:** User successfully ran `reduce_volume_t2` on Slicer's Red background volume. File and crop JSON reported saved; actual file reloading and anatomical overlap not yet independently verified.
+- Native HCP T2 source: `114217_3T_T2w_SPC1.nii.gz`; KJI shape 320×320×256. Reduced output: 262×252×123, 31.0% retained (~69.0% eliminated). Start IJK [66,55,12], end-exclusive [189,307,274]. Local output under `D:\CSP_DEEP_SEG\derived\reduced_t2\`.
+- Printed output affine is numerically consistent with original IJK-to-RAS and crop start (reported matrices satisfy origin shift to numerical precision). This does NOT prove that saved/reloaded NIfTI geometry is correct.
+- User log: `mask_audit=None`. Still **NOT RUN:** manual-CSP mask containment, voxel-by-voxel equality of saved crop versus original, loaded overlay in three planes, independent sample assessment. Initial cropping algorithm uses foreground-centered RAS bounding box, not a fully fitted midsagittal symmetry plane.
