@@ -70,3 +70,8 @@ Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AG
 ### First real HCP crop (114217) — 2026-11-19
 - User successfully ran `reduce_volume_t2` on the Red-background node from the older local Slicer scaffold (bypassing the bad selection-node getter). User-reported output under `D:\CSP_DEEP_SEG\derived\reduced_t2\114217_3T_T2w_SPC1_reduced.nii.gz`; 320×320×256 → 262×252×123 KJI, 31.0% retained, JSON generated. `mask_audit=None` — no anatomical mask containment was tested.
 - NEXT: check voxel equality and affine crop-origin mapping for IJK start [66,55,12], inspect original/reduced T2 overlay in all three planes, pass the QC-reviewed 114217 CSP mask into the cropper or audit its containment. Avoid batch runs until these checks are completed. Replace the local extracted script with the patched GitHub version to repair `reduce_active_t2`.
+
+### Proposed aggressive crop test on subject 114217 (2026-11-19)
+- User visually observed broad axial anatomy in the 31%-retained reduced T2; suggested more aggressively cropping background. This is qualitative only.
+- Next Slicer command: load existing `reduce_t2_slicer.py`; call `reduce_volume_t2(slicer.util.getNode('114217_3T_T2w_SPC1'), r'D:\CSP_DEEP_SEG\derived\reduced_t2_aggressive_test', cfg=CropSettings(lr_half_width_mm=22, posterior_trim_fraction=.35, anterior_trim_fraction=.20, inferior_trim_fraction=.35, superior_trim_fraction=.20), keep_output_in_scene=True)`.
+- **Important:** this crop has NOT been run, nor validated for mask containment. Avoid batch use until native-space QC-approved CSP masks show complete coverage and comfortable six-face margins; don't infer safety from one screenshot. Log the new shape/fraction and visually inspect all planes.
