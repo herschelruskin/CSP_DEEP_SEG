@@ -307,12 +307,12 @@ def test_fit_excludes_outlier_but_keeps_its_measurement_ranking_and_audit(tmp_pa
     ranked = list(csv.DictReader((out / 'largest_csp_ranked.csv').open()))
     assert ranked[0]['subject_id'] == '108828'
     assert ranked[0]['excluded_from_fit'] == 'True'
-    evaluations = list(csv.DictReader((out / 'rule_evaluations.csv').open()))
+    evaluations = list(csv.DictReader((out / 'rule_evaluations.csv').open(encoding='utf-8-sig')))
     assert len(evaluations) == 6
     assert len([x for x in evaluations if x['subject_id'] == '108828']) == 2
     assert all(x['excluded_from_fit'] == 'True'
                for x in evaluations if x['subject_id'] == '108828')
-    loo = list(csv.DictReader((out / 'leave_one_subject_out.csv').open()))
+    loo = list(csv.DictReader((out / 'leave_one_subject_out.csv').open(encoding='utf-8-sig')))
     assert len(loo) == 4
     assert set(x['subject_id'] for x in loo) == {'100206', '100307'}
 
