@@ -48,3 +48,9 @@ Continue CSP_DEEP_SEG at https://github.com/herschelruskin/CSP_DEEP_SEG. Read AG
 - **USER-REPORTED:** 70 reviews, 65 CSP present, 5 absent; ~13 anatomically flagged. Local mask geometry, saved mask counts and QC-pass counts not verified. The annotation-status spreadsheet field is no longer maintained and is not completion evidence.
 - **NEW DESIGN REVIEW ONLY:** [Frontal-horn ROI feasibility](../docs/FRONTAL_HORN_ROI_FEASIBILITY_2026-11-19.md). HCP preprocessed `aparc+aseg` label 4/43 is whole LV, not frontal horn; raw→processed correspondence is unverified. Avoid learned-localizer training until an oracle-style geometry crop and a simple raw-T2 crop are tested for whole positive-CSP containment.
 - **NEXT SMALL ACTION:** match 5–10 raw and HCP-processed subjects, verify spatial transforms and inspect horn subregions; audit raw CSP masks; implement native-space ROI containment and exact crop roundtrip on development cases. Tests NOT RUN; no model trained.
+
+## 2026-11-19 latest localization decision (supersedes earlier stage-3 proposals)
+
+**ACTIVE DESIGN DIRECTION:** Do not start frontal-horn extraction/network training first. Implement and evaluate a **simple orientation-aware, generous midline crop** on raw HCP T2: start from image axis geometry/rough centered brain bounds; refine a midsagittal plane with symmetry only if needed; trim anterior/posterior/superior/inferior conservatively in physical mm. Preserve native 0.7-mm array and coordinate mapping. User wants cheapest fast, easily validated search-space reduction, not precise CSP localization.
+
+**NEXT EXPERIMENT (NOT RUN):** reconcile saved masks, native affines and QC status; freeze development/held-out family-aware split; test six-face positive-mask containment plus minimum physical margins and absent-case valid crops. Do not claim arbitrary percentages/cuts guarantee full coverage. Frontal-horn reference/learned localization is deferred unless failure analysis merits it. See D-020.
