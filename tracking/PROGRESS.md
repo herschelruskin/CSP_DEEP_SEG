@@ -47,3 +47,9 @@
 ## Continuity
 
 Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work session. Keep new run/test evidence in [TEST_LOG.md](TEST_LOG.md) / [EXPERIMENTS.md](EXPERIMENTS.md), and decision changes in [DECISIONS.md](DECISIONS.md).
+
+## 2026-11-19 follow-up (USER-REPORTED / PLANNING)
+
+- Manual review count revised by user to **70 subjects: 65 present and 5 absent**; ~13 flagged for anatomical review. Saved mask files, native geometry and QC-pass counts still **NOT independently audited**. Spreadsheet annotation-status column is intentionally discontinued; do not use it to infer completion.
+- Reviewed HCP S1200 official processed structural directory: `T1w/aparc+aseg.nii.gz` and `T1w/T2w_acpc_dc_restore.nii.gz` are documented; individual processed-file availability, frontal-horn pseudo-label feasibility and raw-T2 spatial mapping remain **UNVERIFIED**.
+- Stage 3 planning: first test fixed raw-T2 ROI and **processed-LV reference-assisted oracle-style ROI** on development masks, then evaluate whether a tiny raw-T2 localizer is warranted. No ROI containment or neural training has been run. Full plan: [Frontal horn feasibility](../docs/FRONTAL_HORN_ROI_FEASIBILITY_2026-11-19.md).
