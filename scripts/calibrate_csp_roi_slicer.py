@@ -103,7 +103,10 @@ def make_roi_manifest(t2_root, mask_root, output_csv, absent_ids_file=None,
         status = statuses.get(sid, {})
         presence = str(status.get('presence', '')).strip().lower()
         if not presence:
-            presence = 'absent' if sid in absent_ids else ('uncertain' if sid in review_ids else 'present')
+            # Anatomical review is an independent QC flag, not CSP absence or
+            # uncertain *presence*. A saved CSP mask is presumed present until
+            # the user explicitly records another presence status.
+            presence = 'absent' if sid in absent_ids else 'present'
         qc = str(status.get('qc', '')).strip().lower() or 'provisional'
         if sid in review_ids or len(images) != 1 or len(masks) > 1:
             qc = 'needs_review'
@@ -200,7 +203,7 @@ def fit_rule(measurements, mode, margin_mm=8.0):
         raise ValueError('Margin must be finite and non-negative')
     positives = [m for m in measurements if m['presence'] == 'present']
     if not positives:
-        raise ValueError('Need at least one QC-approved development positive mask')
+        raise ValueError('Need at least one readable development CSP-positive mask')
     if mode == 'fixed_mm':
         lows = np.array([m['fixed_lo'] for m in positives], float)
         highs = np.array([m['fixed_hi'] for m in positives], float)
@@ -370,8 +373,13 @@ def _read_manifest(manifest_csv):
 
 def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
                                 include_provisional=True, foreground_cfg=CropSettings(),
-                                unlock_holdout=False):
+                                unlock_holdout=False, include_review_for_bounds=True):
     """Calibrate both candidates and evaluate DEV, HOLDOUT, and DEV-LOO.
+
+    Review-flagged CSP-present masks contribute to *exploratory crop extrema*
+    by default. Their QC remains needs_review: this is NOT approval for fine
+    segmentation training. Missing/invalid masks still fail instead of being
+    silently interpreted as absence.
 
     IMPORTANT: holdout rows are not opened by default. Set unlock_holdout=True
     once the rule is frozen to assess it independently, without further tuning.
@@ -398,10 +406,17 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
         if split == 'holdout' and not unlock_holdout:
             withheld.append(sid)
             continue
-        if pres == 'uncertain' or qc in ('needs_review', 'fail', 'exclude', 'excluded'):
-            errors.append(dict(subject_id=sid, error='SKIPPED_NEEDS_REVIEW'))
+        if pres == 'uncertain':
+            errors.append(dict(subject_id=sid, error='SKIPPED_TRULY_UNCERTAIN_PRESENCE'))
             continue
-        if qc != 'pass' and not (include_provisional and qc == 'provisional'):
+        if qc in ('fail', 'exclude', 'excluded'):
+            errors.append(dict(subject_id=sid, error='SKIPPED_EXCLUDED_QC'))
+            continue
+        if qc == 'needs_review' and not include_review_for_bounds:
+            errors.append(dict(subject_id=sid, error='SKIPPED_REVIEW_FLAG_FOR_SENSITIVITY'))
+            continue
+        if qc != 'pass' and not ((include_provisional and qc == 'provisional') or
+                                 (include_review_for_bounds and qc == 'needs_review')):
             errors.append(dict(subject_id=sid, error='SKIPPED_NO_QC_PASS'))
             continue
         if pres not in ('present', 'absent'):
@@ -451,7 +466,11 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
     for mode, rule in rules.items():
         rule['training_subjects'] = len(dev)
         rule['heldout_subjects'] = len(holdout)
-        rule['includes_provisional_qc'] = any(x['qc'] != 'pass' for x in dev)
+        rule['includes_provisional_qc'] = any(x['qc'] == 'provisional' for x in dev)
+        rule['includes_needs_review_positive_masks'] = any(
+            x['presence'] == 'present' and x['qc'] == 'needs_review' for x in dev)
+        rule['needs_review_positive_count'] = sum(
+            x['presence'] == 'present' and x['qc'] == 'needs_review' for x in dev)
     for data, affine, mask_ijk in cached:
         for rule in rules.values():
             try:
@@ -489,15 +508,26 @@ def calibrate_roi_from_manifest(manifest_csv, output_dir, margin_mm=8.0,
              RAS_span_mm=[float(b-a) for a,b in zip(m['mask_ras_lo'], m['mask_ras_hi'])],
              lr_distance_mm=m['lr_mm'], notes=m['notes'])
         for i,m in enumerate(ranked, 1)])
+    # Sensitivity: show how much review-flagged positive boundaries expand the
+    # rule. These are excluded ONLY from this comparison, not the primary rule.
+    non_review_dev = [m for m in dev if m['qc'] != 'needs_review']
+    sensitivity = ({mode: fit_rule(non_review_dev, mode, margin_mm)
+                    for mode in MODES}
+                   if len(non_review_dev) != len(dev) and any(
+                       m['presence'] == 'present' for m in non_review_dev) else None)
     manifest_summary = dict(n_manifest=len(entries), n_read=len(measures),
                             n_errors=len(errors), n_dev=len(dev), n_holdout_evaluated=len(holdout),
                             n_holdout_reserved=len(withheld),
                             dev_positive=sum(m['presence']=='present' for m in dev),
                             dev_absent=sum(m['presence']=='absent' for m in dev),
+                            dev_positive_needs_review=sum(
+                                m['presence']=='present' and m['qc']=='needs_review' for m in dev),
+                            included_review_flagged_boundaries=include_review_for_bounds,
                             qc_counter=dict(Counter(m['qc'] for m in measures)),
-                            validation='EXPLORATORY only; independent holdout and mask QC required')
+                            validation='EXPLORATORY includes review-flagged positive extrema; independent holdout and anatomical mask QC required')
     (out/'calibrated_rules.json').write_text(
-        json.dumps(dict(rules=rules, summary=manifest_summary,
+        json.dumps(dict(rules=rules, sensitivity_excluding_review=sensitivity,
+                        summary=manifest_summary,
                         foreground_cfg=asdict(foreground_cfg)), indent=2)+'\n', encoding='utf-8')
     print('[ROI CALIBRATION] Written:', out)
     print('  dev:', len(dev), 'holdout reserved:', len(withheld),
