@@ -305,8 +305,19 @@ def reduce_active_t2(output_dir, cfg=CropSettings(), segmentation_node=None,
                      segment_id=None, overwrite=False):
     """One-call crop of the currently selected Slicer background T2 volume."""
     import slicer
-    selection = slicer.app.applicationLogic().GetSelectionNode()
-    source = slicer.mrmlScene.GetNodeByID(selection.GetReferenceActiveVolumeID())
+    # Prefer the background actually displayed in the Red slice view.
+    source = None
+    layout = slicer.app.layoutManager()
+    if layout is not None:
+        red = layout.sliceWidget('Red')
+        if red is not None:
+            layer = red.sliceLogic().GetBackgroundLayer()
+            source = layer.GetVolumeNode() if layer is not None else None
+    if source is None:
+        # Slicer provides GetActiveVolumeID, not GetReferenceActiveVolumeID.
+        selection = slicer.app.applicationLogic().GetSelectionNode()
+        active_id = selection.GetActiveVolumeID() if selection else None
+        source = slicer.mrmlScene.GetNodeByID(active_id) if active_id else None
     if source is None:
         raise ValueError('Select the T2 as the active/background volume in Slicer first')
     return reduce_volume_t2(source, output_dir, cfg=cfg,
