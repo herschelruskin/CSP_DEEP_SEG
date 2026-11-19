@@ -94,3 +94,12 @@ Full-cohort batch processing (`limit=None`) requires `allow_full_cohort=True` **
 ## Test status
 
 The included Python tests check geometry, negative references, maximum-extreme calibration, proportional versus fixed-mm scaling, correct exclusion of ambiguous/missing subjects, exact sparse-mask containment, manifest generation and holdout isolation on synthetic images. The **actual 70 HCP scans are not accessible** in this tool environment; no cohort numerical results or Slicer end-to-end execution are claimed.
+
+## 2026-11-19 correction — review flag does NOT change presence
+The manifest must distinguish CSP `presence` from anatomical-boundary `qc`. A subject on the review list who has a CSP mask remains `present` with `qc=needs_review`, not `uncertain`. Genuine `uncertain` presence can still be specified explicitly via a status CSV and is skipped by the fitter.
+
+**Exploratory ROI envelope:** `calibrate_roi_from_manifest(..., include_review_for_bounds=True)` now includes development positive masks with `qc=needs_review` by default (as well as provisional/pass masks), because large or blurred CSPs may define the required search space. Do not silently exclude very large cases. Missing/invalid masks still fail and their IDs appear in `errors.csv`; hard-excluded QC and truly uncertain presence remain skipped.
+
+`calibrated_rules.json` stores the review-flagged positive count and a `sensitivity_excluding_review` comparison so it is clear how much these cases enlarge the box. This **does not promote their boundaries to approved ground truth for segmentation training**. It is only a conservative exploratory localization test. Preserve untouched subject/family-disjoint test data before making population claims.
+
+For users with the previous Slicer file loaded, replace `scripts/calibrate_csp_roi_slicer.py` with the corrected version, then reload the module in the Slicer console. Rebuild the manifest with the existing explicit absence and review ID lists: expected 65 present / 5 absent / 0 uncertain when matching all 70 user-reported subjects. This is a target count, not a verified real-data result.
