@@ -117,3 +117,18 @@ result = c.calibrate_roi_from_manifest(str(d/'cohort_manifest.csv'), str(d/'resu
 This produces normal `calibrated_rules.json`, `subject_measurements.csv`, `rule_evaluations.csv`, `largest_csp_ranked.csv`, and `leave_one_subject_out.csv` inside a new directory without modifying the all-inclusive results. The primary rules fit **64 positive masks + 5 absent**, while still **measuring, ranking, and auditing all 70** cases; the excluded subject is marked `excluded_from_fit=True` in measurement/audit/rank reports. Leave-one-out applies to **64 fit-positive** masks, not the excluded case. With no kept-aside subjects, do not call the 108828 diagnostic or these LOO results independent validation.
 
 Check the retained median crop fraction, six-face margins, retained CSP voxel fraction for 108828 (possibly less than 100% by design), and whether other subjects set crop extrema. Preserve original `results` to compare the full and trimmed envelope. Independent testing must use newly acquired/unseen family-disjoint subjects.
+
+
+## 2026-11-20 corrected unshifted proportional baseline — local user results
+
+User manually removed the erroneous 15-voxel distant island from native mask 112112.nii (retaining the anatomically plausible 21-voxel component), then reran both calibration modes to a **new non-overwriting directory**:
+
+    D:\CSP_DEEP_SEG\derived\roi_calibration\results_corrected_112112\
+
+With 108828 excluded **from fitting only**, 70 scans/records processed; 64 positives fitted plus five operational absences, and 108828 still measured/evaluated. **Reported median source fraction**: fixed_mm **1.18%**, proportional **1.00%**. Internal leave-one-subject-out among 64 positive fitted cases: **0/64 containment misses** in each mode. The exceptional genuine 108828 is now **not entirely covered** under the smaller standard crop; do not silently use its standard-crop mask in training, and do not call posthoc outlier exclusion independent validation. All 70 were originally development: held-out crop performance NOT ESTABLISHED.
+
+The user visually trialed the **unshifted proportional** crop on fresh original T2s. A later posterior translation by 0.025 of head foreground AP span created a tight **+2.58-mm anterior RAS-box clearance** in standard subject 103111, while 108828 had **−19.02 mm posterior** clearance. Based on this tradeoff, user chose to **return to the unshifted original proportional rule**; neither the translated nor posterior-extended exploratory JSON is the baseline. These RAS-box clearances are not a claim of independent native-voxel validation.
+
+**Frozen default for 2.5D construction:** the original unshifted proportional JSON at the corrected directory above, and the existing scripts/calibrate_csp_roi_slicer.py::reduce_t2_with_calibrated_rule; no additional shift. This method uses the *foreground-derived per-subject head-relative* AP/SI bounds and LR midpoint and preserves native IJK voxel resolution via offset-affine crop. It does not anatomically identify frontal horns or detect CSP.
+
+A manifest-restricted, 3-subject-first crop helper (scripts/crop_manifest_slicer.py) and full downstream mask geometry checks are described in [CSP 2.5D baseline](CSP_25D_BASELINE.md). Archive an immutable copy and hash of the private calibrated_rules.json for every experimental run. The full numeric JSON has not been uploaded here; source code alone cannot recreate the same learned crop coefficients without the original calibration cohort.
