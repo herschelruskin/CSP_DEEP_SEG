@@ -88,3 +88,12 @@ Issues and follow-up decision:
 - Source implementation `scripts/calibrate_csp_roi_slicer.py`: new `excluded_from_fit_ids` argument; validates ID and dev designation, fits on remaining development masks, preserves excluded case in `subject_measurements.csv`, `largest_csp_ranked.csv`, `rule_evaluations.csv`, and does not include it in LOO training.
 - **Local verification:** `python -m pytest -q` in `/mnt/data/csp_roi_outlier_patch`: 19 passed in 0.76 s. New regression test models a large outlier and asserts it is absent from fit but still audited/ranked; another prevents silently ignoring an unknown excluded ID.
 - **Not yet run on real 70 subjects:** output crop dimensions and missed-mask rates for outlier-excluded fit. 108828 was examined before selection and hence is not a valid independent test case.
+
+
+## MOD-25D-001 — 2026-11-20 synthetic CPU checks (VERIFIED LOCAL; HCP NOT RUN)
+
+- Script: tests/test_csp25d_baseline.py against scripts/csp25d_baseline.py, torch **2.10.0+cpu**, pytest **9.0.2**.
+- Command: python -m pytest -q tests/test_csp25d_baseline.py → **5 passed** (approx. 1–2 s in local runtime).
+- Checks: odd-height/width shape preservation by seven-channel U-Net; coronal J-axis nearest-edge replication; exact IJK crop and affine-offset native mask extraction with wrong-affine rejection; finite gradient for positive and empty-reference BCE/Dice loss; filter rejecting provisional/needs-review absent subjects as strict negatives.
+- Command: python scripts/csp25d_baseline.py smoke → **passed**, 7-channel 73×55 → 1-channel 73×55, **489,281 parameters**.
+- **NOT RUN:** nibabel installed/imported for actual scan, Slicer crop manifesto loop, HCP mask affine round-trip, GPU training or inference, cohort-level effectiveness/accuracy. These have no measured results.
