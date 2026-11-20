@@ -148,6 +148,11 @@ def load_case(subject_id, crop_path, json_path, mask_path, presence):
     nii = nib.load(crop_path)
     image = np.asarray(nii.dataobj, dtype=np.float32)
     meta = json.loads(Path(json_path).read_text(encoding='utf-8'))
+    # In these native HCP volumes the second IJK axis must be predominantly AP.
+    # Fail instead of silently using a sagittal/axial dimension as 'coronal'.
+    axis_dominance = np.argmax(np.abs(nii.affine[:3, :3]), axis=0).tolist()
+    if axis_dominance != [0, 1, 2]:
+        raise ValueError('Non-coronal native axis order for '+subject_id+': '+str(axis_dominance)+'; do not resample silently')
     original_shape = tuple(int(x) for x in meta['source_shape_kji'][::-1])
     if original_shape == image.shape:
         raise ValueError('Expected a reduced T2 crop, got original-sized image')
@@ -289,7 +294,7 @@ def train(args):
               'manifest_sha256': manifest_hash, 'git_head': git_head,
               'train_subjects': len(train_rows), 'val_subjects': len(val_rows),
               'positive_training_slices': p, 'negative_training_slices': n,
-              'checkpoint_selection': 'positive_case_mean_dice; val_loss if no positive cases'}
+              'checkpoint_selection': 'positive_case_mean_dice; validation requires positive cases'}
     (out/'config.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
     best = -float('inf')
     with (out/'history.csv').open('w', newline='', encoding='utf-8') as fp:
