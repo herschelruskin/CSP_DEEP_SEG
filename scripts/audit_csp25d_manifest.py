@@ -100,6 +100,7 @@ def main():
     ap.add_argument("--rule-json", help="Exact corrected unshifted calibration JSON")
     ap.add_argument("--verify-original", action="store_true", help="Check source T2 voxel equality")
     ap.add_argument("--split", action="append", choices=["train", "val", "test", "unassigned"])
+    ap.add_argument("--eligible-only", action="store_true", help="Audit only subjects eligible for hard supervision")
     ap.add_argument("--subject-id", action="append", help="Repeat to restrict a three-case smoke audit")
     args = ap.parse_args()
 
@@ -107,8 +108,12 @@ def main():
     rows = [r for r in all_rows
             if (not args.split or r["split"] in args.split)
             and (not args.subject_id or r["subject_id"] in args.subject_id)]
+    if args.eligible_only:
+        before = len(rows)
+        rows = [r for r in rows if usable_for_supervision(r)]
+        print(f"Excluded {before - len(rows)} ineligible/unadjudicated rows from supervised preflight")
     if not rows:
-        raise SystemExit("FAIL: no manifest rows selected; no audit was performed")
+        raise SystemExit("FAIL: no eligible manifest rows selected; no audit was performed")
     if args.rule_json and not Path(args.rule_json).is_file():
         raise SystemExit("FAIL: rule JSON not accessible")
     if args.rule_json:
