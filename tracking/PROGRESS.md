@@ -148,3 +148,10 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 - **ACTUAL CPU CI EVIDENCE:** GitHub Actions run 45209618429 on feature commit 9b12b023230a790dc3c58324b2f9d19452b63d passed **10/10 synthetic tests in 1.95s** and model smoke, 489,281 parameters. Later edits add metric checks; inspect newer CI run before claiming its result.
 - **NOT DONE:** actual Slicer batch-crop integration, actual mask spatial alignment and source pixel reconstruction on HCP, complete sample QC, family-safe partition, permission-checked HCP transfer, actual GPU Slurm submission, measured VRAM/time, real Dice/sensitivity/volume error, unseen held-out validation.
 - **NEXT:** On office Windows, sync scripts and run 3-scan frozen-rule Slicer crop, build private manifest, run scripts/audit_csp25d_manifest.py with --verify-original for three IDs, then establish QC and family-aware train/val/test. Only afterward stage private reduced scans/masks to an authorized Alliance cluster and submit scripts/hpc/train_csp25d.sbatch.
+
+
+### 2026-11-23 latest code milestone (CI-VERIFIED, REAL DATA UNTESTED)
+
+- Added pure native IJK reconstruction validator and end-to-end synthetic reconstruction regression. Added one-subject tiny-mask optimizer overfit test and per-subject binary mm3/recall metrics.
+- **Actual CI outcome:** 13/13 tests passed, 2.88s, GitHub Actions workflow 45210799717 at code commit 6efb84e94235b7d4f3086370a279339a23901e0b; source smoke 489,281 parameters. Slurm shell syntax checked with bash -n. This is synthetic CPU evidence only.
+- CI workflow now triggers on relevant code/test edits instead of every documentation change, to avoid redundant resource use. Draft PR #1 updated with real status and blockers; unchanged crop method.
