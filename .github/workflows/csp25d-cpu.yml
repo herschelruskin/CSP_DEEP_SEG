@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/csp25d_baseline.py'
       - 'scripts/audit_csp25d_manifest.py'
+      - 'scripts/inventory_csp25d_crops.py'
       - 'scripts/relocate_csp25d_manifest.py'
       - 'scripts/hpc/**'
       - 'tests/test_csp25d_baseline.py'
@@ -29,7 +30,7 @@ jobs:
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Validate code and synthetic NIfTI integration
         run: |
-          python -m compileall -q scripts/csp25d_baseline.py scripts/audit_csp25d_manifest.py scripts/relocate_csp25d_manifest.py
+          python -m compileall -q scripts/csp25d_baseline.py scripts/audit_csp25d_manifest.py scripts/inventory_csp25d_crops.py scripts/relocate_csp25d_manifest.py
           bash -n scripts/hpc/train_csp25d.sbatch
           python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py
           python scripts/csp25d_baseline.py smoke
