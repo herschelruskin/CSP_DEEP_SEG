@@ -108,3 +108,12 @@ Issues and follow-up decision:
 - **Observed:** 10 passed in 1.95s. Additional model smoke confirmed 489,281 parameters and correct output dimensions.
 - **Scope:** Existing 5 smoke tests plus 5 synthetic integration/sampling tests: per-subject sampler class weights, original NIfTI-to-crop integer voxel/affine roundtrip, modified-pixel detection, wrong-rule rejection and copied-crop subject mismatch.
 - **Caveat:** Real-HCP Slicer files, family metadata, saved label QC, Alliance CUDA runtime, actual MRI segmentation accuracy and image-level validation remain NOT RUN. Later commit added a synthetic volume-error test; re-check latest CI before claiming 11 passed.
+
+
+## MOD-25D-003 — 2026-11-23 latest corrected CPU CI, exact native reconstruction and overfit
+
+- **Status: VERIFIED CI PASS**, latest tested code commit 6efb84e94235b7d4f3086370a279339a23901e0b, workflow https://github.com/herschelruskin/CSP_DEEP_SEG/actions/runs/45210799717.
+- Command: python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py, plus python -m compileall, bash -n scripts/hpc/train_csp25d.sbatch, and python scripts/csp25d_baseline.py smoke.
+- **Observed: 13 passed in 2.88s**, model CPU smoke passed with 489,281 parameters. CI job completed success.
+- New checks beyond MOD-25D-002: one-voxel mm3 Dice/recall/false-positive/volume-error semantics; exact crop-mask-to-source-grid reconstruction and wrong-shape rejection; synthetic positive-mask overfit via actual optimizer steps.
+- **Limitations:** tests use tiny synthetic NIfTI images and generated masks, not real Slicer/HCP T2 files or Alliance GPUs. No quantitative original-HCP audit, job runtime, VRAM benchmark, Dice or independent ROI sensitivity measured.
