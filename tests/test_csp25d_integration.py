@@ -95,3 +95,21 @@ def test_reject_duplicate_crop_reassigned_to_another_subject(tmp_path):
         writer.writerows([row, other])
     with pytest.raises(ValueError, match="same crop T2"):
         read_manifest(path)
+
+
+def test_volume_and_tiny_object_metrics():
+    from csp25d_baseline import binary_case_metrics
+    gt = np.zeros((3, 4, 5), dtype=np.uint8)
+    prediction = np.zeros_like(gt)
+    gt[1, 2, 3] = 1
+    prediction[1, 2, 3] = 1
+    prediction[1, 2, 2] = 1
+    metrics = binary_case_metrics(prediction, gt, .343)
+    assert np.isclose(metrics["dice"], 2 / 3)
+    assert metrics["recall"] == 1
+    assert np.isclose(metrics["reference_volume_mm3"], .343)
+    assert np.isclose(metrics["volume_error_mm3"], .343)
+    assert np.isclose(metrics["false_positive_volume_mm3"], .343)
+    empty = binary_case_metrics(prediction, np.zeros_like(gt), .343)
+    assert empty["dice"] is None and empty["recall"] is None
+    assert np.isclose(empty["false_positive_volume_mm3"], 2 * .343)
