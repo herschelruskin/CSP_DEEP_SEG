@@ -226,3 +226,42 @@ def test_overfit_diagnostic_refuses_validation_and_absent_subjects(tmp_path):
         prepare_examples([dict(row, split="val")])
     with pytest.raises(ValueError, match="positive TRAIN"):
         prepare_examples([dict(row, presence="absent")])
+
+
+def test_manifest_reconcile_uses_actual_nested_crop_paths_and_preserves_labels():
+    from reconcile_csp25d_manifest import reconcile
+    cohort = [
+        dict(subject_id="111111", source_t2=r"D:\\T2w\\111111\\111111_3T_T2w_SPC1.nii.gz",
+             mask_path=r"D:\\CSP_Seg\\111111.nii.gz", split="dev",
+             presence="present", qc="pass"),
+        dict(subject_id="222222", source_t2=r"D:\\T2w\\222222\\222222_3T_T2w_SPC1.nii.gz",
+             mask_path="", split="dev", presence="absent", qc="pass"),
+    ]
+    inventory = [
+        dict(subject_id="111111", status="PASS",
+             crop_t2=r"D:\\roi_batch\\cohort\\nested\\111111_3T_T2w_SPC1_proportional_reduced.nii.gz",
+             crop_json=r"D:\\roi_batch\\cohort\\nested\\111111_3T_T2w_SPC1_proportional_reduced.crop.json",
+             original_t2=cohort[0]["source_t2"], error=""),
+        dict(subject_id="222222", status="FAIL", error="Expected missing exception")
+    ]
+    accepted, rejected = reconcile(cohort, inventory)
+    assert len(accepted) == 1
+    assert len(rejected) == 1
+    assert rejected[0]["subject_id"] == "222222"
+    assert accepted[0]["crop_t2"] == inventory[0]["crop_t2"]
+    assert accepted[0]["source_mask"] == cohort[0]["mask_path"]
+    assert accepted[0]["presence"] == "present"
+    assert accepted[0]["split"] == "unassigned"
+
+
+def test_manifest_reconcile_refuses_duplicate_subjects_and_source_mismatch():
+    from reconcile_csp25d_manifest import reconcile
+    row = dict(subject_id="111111", source_t2="111111_3T_T2w_SPC1.nii.gz",
+               split="train", presence="present", qc="pass")
+    with pytest.raises(ValueError, match="duplicate"):
+        reconcile([row, dict(row)], [])
+    inventory = [dict(subject_id="111111", status="PASS", crop_t2="111111_3T_T2w_SPC1_proportional_reduced.nii.gz",
+                      crop_json="111111_3T_T2w_SPC1_proportional_reduced.crop.json",
+                      original_t2="222222_3T_T2w_SPC1.nii.gz")]
+    accepted, rejected = reconcile([row], inventory)
+    assert not accepted and rejected[0]["reason"].startswith("Original T2")
