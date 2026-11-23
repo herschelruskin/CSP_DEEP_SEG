@@ -97,6 +97,22 @@ def crop_native_mask(mask_ijk: np.ndarray, meta: dict, mask_affine: np.ndarray,
     return mask_ijk[i0:i1, j0:j1, k0:k1]
 
 
+def reconstruct_native_grid(cropped_ijk: np.ndarray, meta: dict):
+    """Place predicted crop into source IJK without resampling or axis swapping."""
+    shape = tuple(int(x) for x in meta['source_shape_kji'][::-1])
+    start = np.asarray(meta['start_ijk'], dtype=int)
+    end = np.asarray(meta['end_ijk'], dtype=int)
+    if (start < 0).any() or (end > shape).any() or (end <= start).any():
+        raise ValueError('Invalid source-grid reconstruction bounds')
+    if tuple(cropped_ijk.shape) != tuple(end - start):
+        raise ValueError('Predicted crop does not match recorded IJK dimensions')
+    native = np.zeros(shape, dtype=cropped_ijk.dtype)
+    i0, j0, k0 = start
+    i1, j1, k1 = end
+    native[i0:i1, j0:j1, k0:k1] = cropped_ijk
+    return native
+
+
 def normalize_t2(img: np.ndarray):
     """Per-volume robust clipping; preserves bright CSF signal and voxel size."""
     good = img[np.isfinite(img) & (img > 0)]
@@ -419,9 +435,7 @@ def infer(args):
     model.load_state_dict(state['state_dict'])
     prob, crop_affine, meta = predict_case(model, row, device, cfg['slices'])
     pred = (prob >= args.threshold).astype(np.uint8)
-    full = np.zeros(tuple(meta['source_shape_kji'][::-1]), dtype=np.uint8)
-    i0, j0, k0 = meta['start_ijk']; i1, j1, k1 = meta['end_ijk']
-    full[i0:i1, j0:j1, k0:k1] = pred
+    full = reconstruct_native_grid(pred, meta)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     nib.save(nib.Nifti1Image(prob, crop_affine), str(out/(row['subject_id']+'_crop_prob.nii.gz')))
     nib.save(nib.Nifti1Image(full, np.asarray(meta['original_affine'])), str(out/(row['subject_id']+'_native_pred.nii.gz')))
