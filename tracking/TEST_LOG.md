@@ -97,3 +97,14 @@ Issues and follow-up decision:
 - Checks: odd-height/width shape preservation by seven-channel U-Net; coronal J-axis nearest-edge replication; exact IJK crop and affine-offset native mask extraction with wrong-affine rejection; finite gradient for positive and empty-reference BCE/Dice loss; filter rejecting provisional/needs-review absent subjects as strict negatives.
 - Command: python scripts/csp25d_baseline.py smoke → **passed**, 7-channel 73×55 → 1-channel 73×55, **489,281 parameters**.
 - **NOT RUN:** nibabel installed/imported for actual scan, Slicer crop manifesto loop, HCP mask affine round-trip, GPU training or inference, cohort-level effectiveness/accuracy. These have no measured results.
+
+
+## MOD-25D-002 — 2026-11-23 GitHub Actions synthetic CPU run
+
+- **Source:** https://github.com/herschelruskin/CSP_DEEP_SEG/actions/runs/45209618429
+- **Commit:** 9b12b023230a790dc3c58324b2f9d19452b63d on feature/native-coronal-25d-baseline-20261120.
+- **Status:** VERIFIED CI PASS, CPU synthetic tests only. GitHub Ubuntu runner, Python 3.11, pip CPU PyTorch and nibabel.
+- **Command:** python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py
+- **Observed:** 10 passed in 1.95s. Additional model smoke confirmed 489,281 parameters and correct output dimensions.
+- **Scope:** Existing 5 smoke tests plus 5 synthetic integration/sampling tests: per-subject sampler class weights, original NIfTI-to-crop integer voxel/affine roundtrip, modified-pixel detection, wrong-rule rejection and copied-crop subject mismatch.
+- **Caveat:** Real-HCP Slicer files, family metadata, saved label QC, Alliance CUDA runtime, actual MRI segmentation accuracy and image-level validation remain NOT RUN. Later commit added a synthetic volume-error test; re-check latest CI before claiming 11 passed.
