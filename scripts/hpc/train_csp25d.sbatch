@@ -37,7 +37,7 @@ PY
 python scripts/audit_csp25d_manifest.py \
     --manifest "$CSP_MANIFEST" \
     --rule-json "$CSP_RULE_JSON" \
-    --split train --split val \
+    --split train --split val --eligible-only \
     --report "$CSP_OUT/preflight.csv"
 
 # Short pilot; increase only after run and validation metrics are inspected.
