@@ -92,3 +92,8 @@ If Alliance access is blocked, use exactly the same code, corrected crop/manifes
     python scripts\csp25d_baseline.py train --manifest PRIVATE_MANIFEST.csv --out PRIVATE_RUN_DIR --epochs 2 --require-cuda
 
 The home GPU is a fallback, not the preferred location for development.
+
+
+## Implementation verification
+
+GitHub Actions run 45210799717 on 2026-11-23: **13/13 synthetic CPU tests passed**, including native mask reconstruction, pixel-equality audit and tiny-mask optimizer overfit. Slurm shell syntax checked. **No Alliance GPU job launched or tested**, no HCP images read by CI, no real-data segmentation accuracy claim. First pending external step is the three-subject Windows Slicer crop/manifest/original voxel audit.
