@@ -148,3 +148,53 @@ def test_synthetic_2d_unet_can_overfit_tiny_signal():
         optim.step()
         losses.append(float(loss.detach()))
     assert losses[-1] < .85 * losses[0]
+
+
+def test_finished_batch_inventory_exact_geometry_and_source_voxels(tmp_path):
+    """All-crop preflight also works without manual CSP reference labels."""
+    from inventory_csp25d_crops import audit_one, collect_files, CROP_SUFFIX
+    row, rules_path, crop_path, _ = make_case(tmp_path)
+    meta_path = Path(row["crop_json"])
+    meta = json.loads(meta_path.read_text())
+    meta["cropped_shape_kji"] = [9, 9, 9]
+    meta["retained_voxel_fraction"] = 9 ** 3 / 14 ** 3
+    meta_path.write_text(json.dumps(meta))
+    rule = json.loads(rules_path.read_text())["rules"]["proportional"]
+    fraction, shape = audit_one(row["subject_id"], crop_path, meta_path, rule,
+                                original=Path(row["original_t2"]), verify_original=True)
+    assert np.isclose(fraction, 9 ** 3 / 14 ** 3)
+    assert shape == "9x9x9"
+    assert collect_files(tmp_path, CROP_SUFFIX)[row["subject_id"]] == crop_path
+
+
+def test_finished_batch_inventory_flags_wrong_origin_and_rule(tmp_path):
+    from inventory_csp25d_crops import audit_one
+    row, rules_path, crop_path, _ = make_case(tmp_path)
+    meta_path = Path(row["crop_json"])
+    meta = json.loads(meta_path.read_text())
+    meta["cropped_shape_kji"] = [9, 9, 9]
+    meta["retained_voxel_fraction"] = 9 ** 3 / 14 ** 3
+    meta_path.write_text(json.dumps(meta))
+    rule = json.loads(rules_path.read_text())["rules"]["proportional"]
+    with pytest.raises(ValueError, match="frozen"):
+        audit_one(row["subject_id"], crop_path, meta_path, {"mode": "proportional"})
+    meta["start_ijk"] = [3, 3, 4]
+    meta["end_ijk"] = [12, 12, 13]
+    meta_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="affine"):
+        audit_one(row["subject_id"], crop_path, meta_path, rule)
+
+
+def test_inventory_ignores_incomplete_staging_and_detects_duplicates(tmp_path):
+    from inventory_csp25d_crops import collect_files, CROP_SUFFIX
+    filename = "111111" + CROP_SUFFIX
+    (tmp_path / filename).touch()
+    staging = tmp_path / ".roi_staging_resume"
+    staging.mkdir()
+    (staging / filename).touch()
+    assert len(collect_files(tmp_path, CROP_SUFFIX)) == 1
+    duplicate = tmp_path / "extra"
+    duplicate.mkdir()
+    (duplicate / filename).touch()
+    with pytest.raises(ValueError, match="Duplicate"):
+        collect_files(tmp_path, CROP_SUFFIX)
