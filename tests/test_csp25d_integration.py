@@ -198,3 +198,31 @@ def test_inventory_ignores_incomplete_staging_and_detects_duplicates(tmp_path):
     (duplicate / filename).touch()
     with pytest.raises(ValueError, match="Duplicate"):
         collect_files(tmp_path, CROP_SUFFIX)
+
+
+def test_real_mask_overfit_diagnostic_selects_maximum_positive_training_slice(tmp_path):
+    from overfit_csp25d_real import prepare_examples, training_slice_scores
+    from csp25d_baseline import CoronalUNet25D
+    import torch
+    row, _, _, _ = make_case(tmp_path)
+    cases = prepare_examples([row], slices=7)
+    assert len(cases) == 1
+    x, y, sid, j, voxel_volume = cases[0]
+    assert x.shape == (1, 7, 9, 9)
+    assert y.shape == (1, 1, 9, 9)
+    assert y.sum() == 1
+    assert sid == row["subject_id"]
+    assert j == 4 and np.isclose(voxel_volume, .7 ** 3)
+    net = CoronalUNet25D(slices=7, width=8)
+    scores = training_slice_scores(net, cases, torch.device("cpu"))
+    assert len(scores) == 1
+    assert 0 <= scores[0]["train_slice_dice"] <= 1
+
+
+def test_overfit_diagnostic_refuses_validation_and_absent_subjects(tmp_path):
+    from overfit_csp25d_real import prepare_examples
+    row, _, _, _ = make_case(tmp_path)
+    with pytest.raises(ValueError, match="TRAIN"):
+        prepare_examples([dict(row, split="val")])
+    with pytest.raises(ValueError, match="positive TRAIN"):
+        prepare_examples([dict(row, presence="absent")])
