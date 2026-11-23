@@ -4,6 +4,8 @@
 
 Retain the unshifted proportional ~1% crop, native 0.7 mm SPC1 T2, seven consecutive coronal input slices, subject-level validation, and 16-channel 2.5D U-Net. The small supervised pilot requires one GPU, not distributed training.
 
+**IMPORTANT 2026-11-23 UPDATE:** A completed office batch has been reported. Do not recrop the cohort based on the older instructions below; first follow the inventory addendum at the end of this document.
+
 ## 1. Local Windows and Slicer gate
 
 Keep using the exact private calibrated rules file under:
@@ -97,3 +99,36 @@ The home GPU is a fallback, not the preferred location for development.
 ## Implementation verification
 
 GitHub Actions run 45210799717 on 2026-11-23: **13/13 synthetic CPU tests passed**, including native mask reconstruction, pixel-equality audit and tiny-mask optimizer overfit. Slurm shell syntax checked. **No Alliance GPU job launched or tested**, no HCP images read by CI, no real-data segmentation accuracy claim. First pending external step is the three-subject Windows Slicer crop/manifest/original voxel audit.
+
+
+## 2026-11-23: reuse the completed existing 1% batch (supersedes the old recropping instruction)
+
+**USER-REPORTED:** the office batch selected 1,113 unique SPC1 scans; 1,082 were newly verified, 30 were resumed, zero were counted failed, and one was reported as an exception. This implies **1,112 claimed completed crops**, NOT 1,113 independently audited model inputs. The exception identity and whether it was an intentional exclusion must be read from the PRIVATE batch log. Do not presume it was 108828. The user has visually checked a separate 30-crop sample with no reported ROI coverage failures; this was not blinded mask validation.
+
+Before creating new ROI files, run the new inventory on the EXISTING final batch directory from a PowerShell window in the checked-out feature-branch repository:
+
+```powershell
+python scripts\inventory_csp25d_crops.py --crop-dir "D:\CSP_DEEP_SEG\derived\roi_batch\cohort" --source-root "D:\CSP_DEEP_SEG\T2w" --rule-json "D:\CSP_DEEP_SEG\derived\roi_calibration\results_corrected_112112\calibrated_rules.json" --report "D:\CSP_DEEP_SEG\derived\roi_batch\csp25d_crop_inventory.csv"
+```
+
+This inventories the source SPC1 set, detects missing paired final crop NIfTI/JSON, refuses duplicate finished outputs, checks exact frozen rule/provenance and native NIfTI affine geometry, and reports the failures without overwriting anything. It intentionally excludes temporary `.roi_staging*` files. **An exit status 1 is EXPECTED if the one exception is actually missing; read the report and determine its identity rather than disguising it as PASS.** The report and its IDs/paths are private.
+
+Then verify actual original-source voxel equality for three representative known-complete IDs (replace example tokens with actual subject IDs), and then the eligible labeled training set:
+
+```powershell
+python scripts\inventory_csp25d_crops.py --crop-dir "D:\CSP_DEEP_SEG\derived\roi_batch\cohort" --source-root "D:\CSP_DEEP_SEG\T2w" --rule-json "D:\CSP_DEEP_SEG\derived\roi_calibration\results_corrected_112112\calibrated_rules.json" --report "D:\CSP_DEEP_SEG\derived\roi_batch\csp25d_sample_voxel_audit.csv" --verify-original --subject-id REPLACE_ID_1 --subject-id REPLACE_ID_2 --subject-id REPLACE_ID_3
+```
+
+Actual source voxel equality across every original scan is more I/O-intensive; do it only if justified after systematic header/provenance QC and a representative sample. The inventory does not inspect CSP masks, so **after** marking reliable supervised subjects in the private cohort manifest, use the existing `audit_csp25d_manifest.py` with `--verify-original` to check full native CSP mask containment, binary labeling and source geometry.
+
+The training manifest must point to the actual successful cropped-output directory. If the inventory shows files in nested final directories, adjust each private `crop_t2`/`crop_json` path from the report rather than assuming the previous `model_25d_crops` directory. Never copy private CSVs or HCP T2/masks into this public repository.
+
+After trusted positive train subjects and their binary 0/1 native-grid masks are present on Alliance, run a deliberate TRAIN-only overfit check BEFORE the existing two-epoch Slurm pilot:
+
+```bash
+python "$CSP_REPO/scripts/overfit_csp25d_real.py" --manifest "$CSP_MANIFEST" --subject-id ACTUAL_TRAIN_ID --out "$SCRATCH/csp25d_runs/overfit_001" --steps 150
+```
+
+Run this command **inside a requested GPU compute allocation**, not on a login node. The diagnostic logs optimization loss and Dice on the EXACT training center slice used for updates; it is not subject-disjoint validation and cannot be cited as generalization performance. If it cannot memorize a trusted small mask, diagnose image/mask alignment, normalization and sampling before launching longer runs. The Slurm pilot remains in `scripts/hpc/train_csp25d.sbatch` and should follow only after basic integration succeeds.
+
+**Actual cluster and project permissions remain user-specific and unverified.** Start by inspecting accessible association/account, modules and GPU partitions, and checking applicable HCP data-use/Alliance policies before any transfer. Nibi (`nibi.alliancecan.ca`) is a candidate login host, not a confirmed allocation for this account. The Python module version shown in the earlier example is NOT verified.
