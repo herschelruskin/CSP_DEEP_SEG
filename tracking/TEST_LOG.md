@@ -117,3 +117,12 @@ Issues and follow-up decision:
 - **Observed: 13 passed in 2.88s**, model CPU smoke passed with 489,281 parameters. CI job completed success.
 - New checks beyond MOD-25D-002: one-voxel mm3 Dice/recall/false-positive/volume-error semantics; exact crop-mask-to-source-grid reconstruction and wrong-shape rejection; synthetic positive-mask overfit via actual optimizer steps.
 - **Limitations:** tests use tiny synthetic NIfTI images and generated masks, not real Slicer/HCP T2 files or Alliance GPUs. No quantitative original-HCP audit, job runtime, VRAM benchmark, Dice or independent ROI sensitivity measured.
+
+## MOD-25D-004 — 2026-11-23 existing-batch reuse and real-label diagnostic (VERIFIED SYNTHETIC CPU ONLY)
+
+- **Code branch:** feature/native-coronal-25d-baseline-20261120; **tested commit:** 9446c05bbab284f87754d872636d40b7a3e0816f.
+- **Evidence:** GitHub Actions https://github.com/herschelruskin/CSP_DEEP_SEG/actions/runs/45233936711, completed **success**. Ubuntu runner, Python 3.11, CPU torch, NumPy and nibabel.
+- **Exact CI check:** `python -m compileall -q scripts/csp25d_baseline.py scripts/audit_csp25d_manifest.py scripts/inventory_csp25d_crops.py scripts/overfit_csp25d_real.py scripts/reconcile_csp25d_manifest.py scripts/relocate_csp25d_manifest.py`; `bash -n scripts/hpc/train_csp25d.sbatch`; `python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py`; `python scripts/csp25d_baseline.py smoke`.
+- **Observed:** **20 tests passed in 2.69s**; 489,281 model parameters. New tests check saved crop/source NIfTI equality under synthetic geometry, wrong frozen crop rule and offset, staging-vs-final output inventory, maximum-positive-center-slice extraction and strict train-only overfit usage, exact crop-path manifest reconciliation and duplicate/mismatched subject rejection.
+- **Scope:** Verified script syntax and unit/integration logic with fabricated masks, not actual HCP image/annotation integration. No evidence of original batch file integrity, label QC, real train-only overfit success, Alliance access, memory/runtime, real Dice or independent held-out results.
+- **Next gate:** run `scripts/inventory_csp25d_crops.py` locally on actual final cohort ROI directory with original T2 root and frozen corrected-112112 rules. Confirm 1,112 completed claims, identify the single exception, run limited voxel-equality sampling, then `scripts/reconcile_csp25d_manifest.py` and label-aware `scripts/audit_csp25d_manifest.py` before transferring any private data.
