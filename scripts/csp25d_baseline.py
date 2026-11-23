@@ -12,6 +12,7 @@ import hashlib
 import json
 import random
 import subprocess
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def normalize_t2(img: np.ndarray):
     lo, hi = np.percentile(good, (1, 99))
     if hi <= lo:
         raise ValueError('Constant or degenerate T2 intensities')
-    scaled = np.clip((np.nan_to_num(img.astype(np.float32)) - lo) / (hi - lo), 0, 1)
+    scaled = np.clip((np.where(np.isfinite(img), img, 0).astype(np.float32) - lo) / (hi - lo), 0, 1)
     scaled[img <= 0] = 0
     return scaled.astype(np.float32)
 
@@ -130,6 +131,12 @@ def read_manifest(filename):
             raise ValueError('Family split leakage: ' + fam)
     if any(not r.get('family_group', '').strip() for r in rows):
         print('WARNING: family-disjoint partition NOT VERIFIED (missing family_group)')
+    crop_owner = {}
+    for r in rows:
+        key = str(Path(r['crop_t2'])).replace('\\', '/').casefold()
+        if key in crop_owner and crop_owner[key] != r['subject_id']:
+            raise ValueError('Different subjects assigned the same crop T2: ' + key)
+        crop_owner[key] = r['subject_id']
     return rows
 
 
@@ -226,6 +233,26 @@ def bce_dice_loss(logits, target):
     return bce + dice_loss
 
 
+def class_subject_balanced_weights(index):
+    """Balance classes 50/50 and subjects uniformly within each class.
+
+    Global per-slice weighting overrepresents longer CSPs and undersamples
+    one-slice positive masks. Empty-reference subjects provide negatives only.
+    """
+    counts = {}
+    for sid, _, positive in index:
+        key = (bool(positive), sid)
+        counts[key] = counts.get(key, 0) + 1
+    n_subjects = {label: len({sid for (flag, sid) in counts if flag == label})
+                  for label in (False, True)}
+    if not all(n_subjects.values()):
+        raise ValueError('Both positive and negative central slices required')
+    return torch.tensor([
+        0.5 / (n_subjects[bool(pos)] * counts[(bool(pos), sid)])
+        for sid, _, pos in index
+    ], dtype=torch.double)
+
+
 def seed_all(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -276,11 +303,13 @@ def train(args):
     p, n = sum(positive), len(positive) - sum(positive)
     if not p or not n:
         raise ValueError('Both positive and negative center slices required for training')
-    weights = torch.tensor([0.5 / p if b else 0.5 / n for b in positive], dtype=torch.double)
+    weights = class_subject_balanced_weights(train_ds.index)
     sampler = WeightedRandomSampler(weights, num_samples=len(train_ds), replacement=True)
     loader = DataLoader(train_ds, batch_size=1, sampler=sampler, num_workers=0)
     model = CoronalUNet25D(slices=args.slices, width=args.width)
     device = torch.device('cuda' if torch.cuda.is_available() and not args.cpu else 'cpu')
+    if args.require_cuda and device.type != 'cuda':
+        raise RuntimeError('CUDA GPU required by --require-cuda; refusing silent CPU training')
     model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
@@ -289,7 +318,11 @@ def train(args):
         git_head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
     except (OSError, subprocess.CalledProcessError):
         git_head = 'unavailable'
-    record = {'slices': args.slices, 'width': args.width, 'seed': args.seed, 'lr': args.lr,
+    record = {'sampling': 'class-balanced; subjects balanced within each class',
+              'cuda_runtime': torch.version.cuda,
+              'gpu_name': torch.cuda.get_device_name(0) if device.type == 'cuda' else None,
+              'gpu_total_vram_bytes': torch.cuda.get_device_properties(0).total_memory if device.type == 'cuda' else None,
+              'slices': args.slices, 'width': args.width, 'seed': args.seed, 'lr': args.lr,
               'boundary_ignore': args.boundary_ignore, 'device': str(device), 'torch': torch.__version__,
               'manifest_sha256': manifest_hash, 'git_head': git_head,
               'train_subjects': len(train_rows), 'val_subjects': len(val_rows),
@@ -298,9 +331,12 @@ def train(args):
     (out/'config.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
     best = -float('inf')
     with (out/'history.csv').open('w', newline='', encoding='utf-8') as fp:
-        writer = csv.DictWriter(fp, fieldnames=['epoch', 'train_loss', 'val_positive_case_mean_dice', 'val_empty_mean_fp_mm3'])
+        writer = csv.DictWriter(fp, fieldnames=['epoch', 'train_loss', 'val_positive_case_mean_dice', 'val_empty_mean_fp_mm3', 'epoch_seconds', 'peak_gpu_allocated_bytes'])
         writer.writeheader()
         for epoch in range(1, args.epochs + 1):
+            epoch_start = time.monotonic()
+            if device.type == 'cuda':
+                torch.cuda.reset_peak_memory_stats(device)
             model.train(); losses = []
             for x, y in loader:
                 x = x.to(device); y = y.to(device)
@@ -317,7 +353,11 @@ def train(args):
                 raise ValueError('Validation split must contain at least one CSP-positive subject')
             writer.writerow({'epoch': epoch, 'train_loss': np.mean(losses),
                              'val_positive_case_mean_dice': dice,
-                             'val_empty_mean_fp_mm3': metrics['empty_case_mean_fp_mm3']})
+                             'val_empty_mean_fp_mm3': metrics['empty_case_mean_fp_mm3'],
+                             'epoch_seconds': round(time.monotonic() - epoch_start, 3),
+                             'peak_gpu_allocated_bytes': torch.cuda.max_memory_allocated(device) if device.type == 'cuda' else ''})
+            # Log measured end-to-end epoch duration and observed GPU allocation.
+            # The CSV remains meaningful when running the CPU fallback.
             fp.flush()
             print(f'Epoch {epoch}: train_loss={np.mean(losses):.4f}, val_positive_Dice={dice:.4f}, val_empty_fp_mm3={metrics["empty_case_mean_fp_mm3"]}')
             if dice > best:
@@ -390,7 +430,7 @@ def main():
     t = sub.add_parser('train'); t.add_argument('--manifest', required=True); t.add_argument('--out', required=True)
     t.add_argument('--slices', type=int, default=7); t.add_argument('--width', type=int, default=16)
     t.add_argument('--epochs', type=int, default=20); t.add_argument('--lr', type=float, default=3e-4)
-    t.add_argument('--seed', type=int, default=843); t.add_argument('--boundary-ignore', type=int, default=1); t.add_argument('--cpu', action='store_true')
+    t.add_argument('--seed', type=int, default=843); t.add_argument('--boundary-ignore', type=int, default=1); t.add_argument('--cpu', action='store_true'); t.add_argument('--require-cuda', action='store_true')
     i = sub.add_parser('infer'); i.add_argument('--manifest', required=True); i.add_argument('--checkpoint', required=True)
     i.add_argument('--subject-id', required=True); i.add_argument('--out', required=True)
     i.add_argument('--threshold', type=float, default=0.5); i.add_argument('--cpu', action='store_true')
