@@ -121,7 +121,13 @@ python scripts\inventory_csp25d_crops.py --crop-dir "D:\CSP_DEEP_SEG\derived\roi
 
 Actual source voxel equality across every original scan is more I/O-intensive; do it only if justified after systematic header/provenance QC and a representative sample. The inventory does not inspect CSP masks, so **after** marking reliable supervised subjects in the private cohort manifest, use the existing `audit_csp25d_manifest.py` with `--verify-original` to check full native CSP mask containment, binary labeling and source geometry.
 
-The training manifest must point to the actual successful cropped-output directory. If the inventory shows files in nested final directories, adjust each private `crop_t2`/`crop_json` path from the report rather than assuming the previous `model_25d_crops` directory. Never copy private CSVs or HCP T2/masks into this public repository.
+Join the completed batch inventory to your existing 70-subject manual annotation/calibration cohort **without reconstructing filenames or silently omitting failures**:
+
+```powershell
+python scripts\reconcile_csp25d_manifest.py --cohort "D:\CSP_DEEP_SEG\derived\roi_calibration\cohort_manifest.csv" --inventory "D:\CSP_DEEP_SEG\derived\roi_batch\csp25d_crop_inventory.csv" --output "D:\CSP_DEEP_SEG\derived\model_25d_manifest.csv" --exceptions "D:\CSP_DEEP_SEG\derived\model_25d_skipped_crops.csv"
+```
+
+The resulting PRIVATE model manifest takes exact (possibly nested) crop paths only from PASS inventory rows and writes every skipped labeled subject to a separate PRIVATE exception CSV. It preserves presence, QC, mask paths, family groups and only pre-existing explicit train/val/test assignments; a development-only `dev` is reset to `unassigned` rather than assigned a convenient split. **Reconcile does not certify mask quality or family independence.** Review all entries, export positive masks to original-grid binary NIfTI if needed, and explicitly select trustworthy train/val/test records before the existing label-aware `audit_csp25d_manifest.py --verify-original` preflight. Never copy private CSVs or HCP T2/masks into this public repository.
 
 After trusted positive train subjects and their binary 0/1 native-grid masks are present on Alliance, run a deliberate TRAIN-only overfit check BEFORE the existing two-epoch Slurm pilot:
 
