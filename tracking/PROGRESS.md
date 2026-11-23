@@ -155,3 +155,13 @@ Read [HANDOFF.md](HANDOFF.md) and [../AGENTS.md](../AGENTS.md) before each work 
 - Added pure native IJK reconstruction validator and end-to-end synthetic reconstruction regression. Added one-subject tiny-mask optimizer overfit test and per-subject binary mm3/recall metrics.
 - **Actual CI outcome:** 13/13 tests passed, 2.88s, GitHub Actions workflow 45210799717 at code commit 6efb84e94235b7d4f3086370a279339a23901e0b; source smoke 489,281 parameters. Slurm shell syntax checked with bash -n. This is synthetic CPU evidence only.
 - CI workflow now triggers on relevant code/test edits instead of every documentation change, to avoid redundant resource use. Draft PR #1 updated with real status and blockers; unchanged crop method.
+
+## 2026-11-23 — 1,113-subject batch handoff and Alliance-ready data integration
+
+**USER-REPORTED batch:** 1,113 SPC1 subjects selected; 1,082 new verified crops + 30 resumed = 1,112 claimed completed ROI crops, zero processing failures and **one exception whose identity/reason must be recovered from local reports**. The user visually sampled 30 crops and reported satisfactory anatomical search-region coverage, with no major issue; this is not independent positive-mask containment evidence. All 1,113 final model inputs remain **NOT YET AUDITED** by the current chat runtime.
+
+**CODE IMPLEMENTED in draft PR #1:** `scripts/inventory_csp25d_crops.py` scans final ROI NIfTI/JSON outputs, ignores temporary staging, matches original SPC1 subjects, checks metadata/affine/frozen proportional rule and optional exact source voxel equality. `scripts/reconcile_csp25d_manifest.py` joins PASS outputs to the existing privately labeled cohort without assuming flat paths; explicitly lists skipped/failed crops, carries annotation fields and leaves dev splits unassigned. `scripts/overfit_csp25d_real.py` deliberately tests learning a QC-approved TRAIN subject's largest positive coronal slice before real validation. Training architecture and frozen crop unchanged.
+
+**VERIFIED TESTS:** CI run 45233936711 at code commit 9446c05: **20/20 synthetic CPU tests passed**; no real HCP or GPU verification. Updated deployment commands at `docs/ALLIANCE_GPU_BASELINE.md`. Further doc-only commits do not change tested code.
+
+**BLOCKERS:** actual local batch report/file paths and exception cause, native binary positive-mask export/alignment, trustworthy labeled train/val partition and family metadata, HCP/Alliance storage approval, account and Python/CUDA modules, first real training diagnostics and VRAM. **NEXT:** execute final-batch inventory from office PowerShell; reconcile 70 labels; audit eligible masks; check Alliance association/GPU resources; then one training-only overfit and two-epoch pilot.
