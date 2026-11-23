@@ -274,21 +274,60 @@ def predict_case(model, row, device, slices):
     return prob, affine, meta
 
 
+def binary_case_metrics(pred, ref, voxel_volume_mm3):
+    """Per-subject voxel/volume metrics; no biological size cutoffs."""
+    pred = np.asarray(pred, dtype=bool)
+    ref = np.asarray(ref, dtype=bool)
+    if pred.shape != ref.shape or not np.isfinite(voxel_volume_mm3) or voxel_volume_mm3 <= 0:
+        raise ValueError("Pred/reference grids or voxel volume invalid")
+    tp = int(np.logical_and(pred, ref).sum())
+    p = int(pred.sum())
+    r = int(ref.sum())
+    fp = p - tp
+    result = {
+        "reference_volume_mm3": r * voxel_volume_mm3,
+        "predicted_volume_mm3": p * voxel_volume_mm3,
+        "false_positive_volume_mm3": fp * voxel_volume_mm3,
+        "volume_error_mm3": (p - r) * voxel_volume_mm3,
+        "predicted_present": bool(p > 0),
+        "dice": 2 * tp / (p + r) if r else None,
+        "recall": tp / r if r else None,
+    }
+    return result
+
+
 def evaluate(model, rows, device, slices, threshold=0.5):
-    """Subject-level metrics: Dice only for annotated positives; empty-case FP volume separately."""
-    dices, empty_fp = [], []
+    """Exploratory per-subject evaluation on annotated data.
+
+    Reference-positive Dice/recall are not defined on operationally empty
+    labels. A positive detection means any voxel survives the specified
+    threshold; report its false-positive rate separately on trusted negatives.
+    """
+    dices, recalls, absolute_errors, empty_fp, positive_detect, empty_detect = [], [], [], [], [], []
     for row in rows:
         prob, _, meta = predict_case(model, row, device, slices)
-        _, ref, _, _ = load_case(row['subject_id'], row['crop_t2'], row['crop_json'], row['source_mask'], row['presence'])
-        pred = prob >= threshold
-        spacing_volume = abs(np.linalg.det(np.asarray(meta['original_affine'])[:3, :3]))
+        _, ref, _, _ = load_case(row['subject_id'], row['crop_t2'], row['crop_json'],
+                               row['source_mask'], row['presence'])
+        voxel_volume = abs(np.linalg.det(np.asarray(meta['original_affine'])[:3, :3]))
+        m = binary_case_metrics(prob >= threshold, ref, voxel_volume)
         if np.any(ref):
-            dices.append(2 * int(np.logical_and(pred, ref).sum()) / max(1, int(pred.sum()) + int(ref.sum())))
+            dices.append(m["dice"])
+            recalls.append(m["recall"])
+            absolute_errors.append(abs(m["volume_error_mm3"]))
+            positive_detect.append(float(m["predicted_present"]))
         else:
-            empty_fp.append(float(pred.sum()) * spacing_volume)
-    return {'positive_case_mean_dice': float(np.mean(dices)) if dices else None,
-            'n_positive': len(dices), 'empty_case_mean_fp_mm3': float(np.mean(empty_fp)) if empty_fp else None,
-            'n_empty': len(empty_fp)}
+            empty_fp.append(m["false_positive_volume_mm3"])
+            empty_detect.append(float(m["predicted_present"]))
+    return {
+        'positive_case_mean_dice': float(np.mean(dices)) if dices else None,
+        'positive_case_mean_recall': float(np.mean(recalls)) if recalls else None,
+        'positive_case_mean_absolute_volume_error_mm3': float(np.mean(absolute_errors)) if absolute_errors else None,
+        'positive_case_detection_fraction': float(np.mean(positive_detect)) if positive_detect else None,
+        'n_positive': len(dices),
+        'empty_case_mean_fp_mm3': float(np.mean(empty_fp)) if empty_fp else None,
+        'empty_case_fraction_with_prediction': float(np.mean(empty_detect)) if empty_detect else None,
+        'n_empty': len(empty_fp),
+    }
 
 
 def train(args):
