@@ -394,7 +394,7 @@ def build_manifest(args):
     with open(args.cohort, newline='', encoding='utf-8-sig') as f:
         rows = list(csv.DictReader(f))
     fields = ['subject_id', 'split', 'family_group', 'crop_t2', 'crop_json', 'source_mask',
-              'presence', 'qc', 'negative_confidence']
+              'presence', 'qc', 'negative_confidence', 'original_t2']
     output = Path(args.output); output.parent.mkdir(parents=True, exist_ok=True)
     with output.open('w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=fields); w.writeheader()
@@ -409,7 +409,8 @@ def build_manifest(args):
                         'family_group': r.get('family_group', ''),
                         'crop_t2': str(Path(args.crop_dir)/(cropped+'.nii.gz')),
                         'crop_json': str(Path(args.crop_dir)/(cropped+'.crop.json')),
-                        'source_mask': r.get('mask_path', ''), 'presence': r.get('presence', ''),
+                        'source_mask': r.get('mask_path', ''), 'original_t2': r.get('source_t2', ''),
+                        'presence': r.get('presence', ''),
                         'qc': r.get('qc', ''), 'negative_confidence': ''})
     print('Wrote PRIVATE draft manifest; edit splits and QC before training:', output)
 
