@@ -107,3 +107,8 @@ D:\CSP_DEEP_SEG\
 - [TransUNet](https://doi.org/10.1016/j.media.2024.103280) (candidate model family; no CSP-specific performance presumed)
 
 See [docs/PROJECT_CONTROLS.md](docs/PROJECT_CONTROLS.md) for evidence standards and reporting conventions. The prior seven-stage plan remains a long-term framework; its initial numerical annotation target and registration-first ordering are **superseded for the first proof of concept** by the current staged baseline.
+
+
+## 2026-11-23 2.5D update — preferred Alliance GPU
+
+The December proof-of-concept model is implemented on the feature/native-coronal-25d-baseline-20261120 draft-PR branch; new preflight source/crop NIfTI checks, balanced subject sampling, Windows-to-Linux private data relocation, an Alliance one-GPU Slurm pilot, and synthetic CI tests are documented in [the Alliance GPU procedure](docs/ALLIANCE_GPU_BASELINE.md). **Compute Canada/Alliance is preferred** because the home 2060 Super is not at office; home GPU is a fallback. This update supersedes older GPU-location/status paragraphs elsewhere in the README. No actual HCP GPU training, real segmentation Dice or independent crop validation yet.
