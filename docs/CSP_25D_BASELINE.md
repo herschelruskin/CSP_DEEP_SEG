@@ -84,3 +84,17 @@ It writes subject-ID crop probability NIfTI plus a full original-grid native bin
 | External/held-out localization recall and research-grade performance | **NOT RUN** |
 
 Five tests passed on local CPU with torch 2.10.0; nibabel was not installed in that test environment, so real NIfTI ingestion is still untested. Avoid reporting a model performance result before local HCP integration, tiny-subset overfit, validation and manual adjudication.
+
+
+## 2026-11-23 implementation addendum: office-first QA and Alliance GPU
+
+The previously documented RTX 2060 Super is now **fallback compute**; the **Digital Research Alliance of Canada / Compute Canada GPU is preferred** because the home GPU is unavailable from the office. See docs/ALLIANCE_GPU_BASELINE.md for Slurm, CUDA environment, HCP data-transfer safeguards, minimal crop-only staging and Linux manifest relocation.
+
+New scripts:
+- scripts/audit_csp25d_manifest.py — strict preflight with exact frozen rule, original-grid mask containment, affine and (when --verify-original) actual original source T2 voxel equality. Run it on Windows with selected 3 crop subjects before training. The --eligible-only option skips unadjudicated subjects explicitly during supervised preflight; it does not rewrite or declare them absent.
+- scripts/relocate_csp25d_manifest.py — convert only PRIVATE Windows file paths to Linux scratch paths, preserving subjects, family groups, splits and labels. It never copies data.
+- scripts/hpc/train_csp25d.sbatch — single Slurm GPU two-epoch first pilot, refusing missing CUDA and auditing eligible train/validation images before model training.
+
+Training now balances **subjects inside each of two classes** (positive and negative center slices). This prevents a long CSP from automatically receiving more positive-slice sampling weight than a one-slice CSP. It may oversample very short cases; compare in later experiments. Training CSV logs epoch time and peak torch CUDA allocated bytes (not the true whole-device memory high-water mark). Additional exploratory metrics include voxel recall and CSP volume error in mm³; never interpret operational absence as biological proof of zero.
+
+CPU CI evidence: synthetic NIfTI and sampling tests run 2026-11-23; **10 passed** at commit 9b12b023230a790dc3c58324b2f9d19452b63d. Additional test edits require verification of the latest CI run. No HCP/Slurm/GPU segmentation measurement has been established.
