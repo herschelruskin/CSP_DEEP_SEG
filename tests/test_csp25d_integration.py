@@ -113,3 +113,38 @@ def test_volume_and_tiny_object_metrics():
     empty = binary_case_metrics(prediction, np.zeros_like(gt), .343)
     assert empty["dice"] is None and empty["recall"] is None
     assert np.isclose(empty["false_positive_volume_mm3"], 2 * .343)
+
+
+def test_exact_native_reconstruction_roundtrip(tmp_path):
+    from csp25d_baseline import reconstruct_native_grid, crop_native_mask
+    row, _, _, _ = make_case(tmp_path)
+    meta = json.loads(Path(row["crop_json"]).read_text())
+    full = np.asanyarray(nib.load(row["source_mask"]).dataobj)
+    affine = nib.load(row["source_mask"]).affine
+    crop_nii = nib.load(row["crop_t2"])
+    extracted = crop_native_mask(full, meta, affine, crop_nii.shape, crop_nii.affine)
+    reconstructed = reconstruct_native_grid(extracted, meta)
+    np.testing.assert_array_equal(reconstructed, full)
+    with pytest.raises(ValueError, match="Predicted crop"):
+        reconstruct_native_grid(np.zeros((1, 1, 1)), meta)
+
+
+def test_synthetic_2d_unet_can_overfit_tiny_signal():
+    """Fixed one-example optimizer diagnostic, NOT a real CSP Dice experiment."""
+    import torch
+    from csp25d_baseline import CoronalUNet25D, bce_dice_loss
+    torch.manual_seed(843)
+    x = torch.rand(1, 7, 32, 24) * .02
+    x[:, :, 12:17, 10:15] += .9
+    y = torch.zeros(1, 1, 32, 24)
+    y[:, :, 12:17, 10:15] = 1
+    net = CoronalUNet25D(slices=7, width=8)
+    optim = torch.optim.AdamW(net.parameters(), lr=.004)
+    losses = []
+    for _ in range(12):
+        optim.zero_grad()
+        loss = bce_dice_loss(net(x), y)
+        loss.backward()
+        optim.step()
+        losses.append(float(loss.detach()))
+    assert losses[-1] < .85 * losses[0]
