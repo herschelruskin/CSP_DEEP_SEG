@@ -98,3 +98,8 @@ New scripts:
 Training now balances **subjects inside each of two classes** (positive and negative center slices). This prevents a long CSP from automatically receiving more positive-slice sampling weight than a one-slice CSP. It may oversample very short cases; compare in later experiments. Training CSV logs epoch time and peak torch CUDA allocated bytes (not the true whole-device memory high-water mark). Additional exploratory metrics include voxel recall and CSP volume error in mm³; never interpret operational absence as biological proof of zero.
 
 CPU CI evidence: synthetic NIfTI and sampling tests run 2026-11-23; **10 passed** at commit 9b12b023230a790dc3c58324b2f9d19452b63d. Additional test edits require verification of the latest CI run. No HCP/Slurm/GPU segmentation measurement has been established.
+
+
+### Verified latest synthetic test state — 2026-11-23
+
+GitHub Actions run 45210799717 (code commit 6efb84e94235b7d4f3086370a279339a23901e0b): **13 passed in 2.88s** (CPU). This includes synthetic NIfTI original/crop pixel equality, frozen-rule mismatch detection, positive/negative subject balancing, tiny volume-error metrics, native-grid roundtrip reconstruction, and a simple tiny-object optimizer overfit diagnostic. Slurm batch shell parsed successfully. None are clinical/HCP data or GPU performance results.
