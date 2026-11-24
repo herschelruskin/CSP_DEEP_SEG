@@ -193,15 +193,27 @@ def load_case(subject_id, crop_path, json_path, mask_path, presence):
         if not mask_path:
             raise ValueError('Positive subject lacks native mask: ' + subject_id)
         ref = nib.load(mask_path)
-        native = np.asarray(ref.dataobj)
-        values = np.unique(native)
+        reference = np.asarray(ref.dataobj)
+        values = np.unique(reference)
         if not np.isin(values, (0, 1)).all():
             raise ValueError('Nonbinary mask: explicitly export triangular-only 0/1 labelmap for ' + subject_id)
-        mask = crop_native_mask(native, meta, ref.affine, image.shape, nii.affine).astype(np.uint8)
+        original_shape = tuple(int(x) for x in meta['source_shape_kji'][::-1])
+        if reference.shape == original_shape:
+            # Original Slicer-native labelmap: prove whole-mask containment.
+            mask = crop_native_mask(reference, meta, ref.affine, image.shape, nii.affine).astype(np.uint8)
+            if int(np.count_nonzero(mask)) != int(np.count_nonzero(reference)):
+                raise ValueError('CSP incompletely contained in crop: ' + subject_id)
+        elif reference.shape == image.shape:
+            # Compact labelmap: same voxel grid AND RAS affine as the saved T2 ROI.
+            # Original whole-mask containment must have been verified before
+            # exporting this compact file (see prepare_csp25d_roi_masks.py).
+            if not np.allclose(ref.affine, nii.affine, atol=1e-3, rtol=0):
+                raise ValueError('Cropped CSP mask affine does not match cropped T2: ' + subject_id)
+            mask = reference.astype(np.uint8)
+        else:
+            raise ValueError('CSP mask shape is neither original nor cropped T2: ' + subject_id)
         if not np.any(mask):
             raise ValueError('Positive CSP completely outside crop: ' + subject_id)
-        if int(np.count_nonzero(mask)) != int(np.count_nonzero(native)):
-            raise ValueError('CSP incompletely contained in crop: ' + subject_id)
     # Return native unnormalized crop for simple inference/diagnostics too.
     return normalize_t2(image), mask, nii.affine.copy(), meta
 
