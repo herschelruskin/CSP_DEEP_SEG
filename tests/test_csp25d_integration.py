@@ -533,3 +533,48 @@ def test_staging_archive_preserves_44_11_split_and_private_sha256(tmp_path):
     (root / "200000" / "200000_csp_roi_mask.nii.gz").write_bytes(b"tampered mask")
     with pytest.raises(ValueError, match="SHA256 differs"):
         make_package(manifest, audit, rule, root / "second.zip", "/scratch/user/csp25d/seed843")
+
+
+def test_checkpoint_per_subject_metrics_native_voxel_volume_and_overlap():
+    from evaluate_csp25d_checkpoint import per_case_metrics
+    ref = np.zeros((2, 4, 3), dtype=np.uint8)
+    pred = np.zeros_like(ref)
+    ref[0, 1, 0] = 1
+    ref[0, 2, 0] = 1
+    ref[1, 2, 0] = 1
+    pred[0, 1, 0] = 1
+    pred[1, 2, 0] = 1
+    pred[1, 3, 0] = 1
+    met = per_case_metrics(pred, ref, 0.343)
+    assert (met["true_positive_voxels"], met["false_positive_voxels"],
+            met["false_negative_voxels"]) == (2, 1, 1)
+    assert met["dice"] == pytest.approx(2 / 3)
+    assert met["iou"] == pytest.approx(1 / 2)
+    assert met["precision"] == pytest.approx(2 / 3)
+    assert met["recall"] == pytest.approx(2 / 3)
+    assert met["reference_volume_mm3"] == pytest.approx(1.029)
+    assert met["predicted_volume_mm3"] == pytest.approx(1.029)
+    assert met["absolute_volume_error_mm3"] == 0
+
+
+def test_checkpoint_per_subject_metrics_empty_prediction_and_manifest_guard(tmp_path):
+    import hashlib
+    from evaluate_csp25d_checkpoint import per_case_metrics, require_same_manifest
+    ref = np.ones((2, 2, 1), dtype=np.uint8)
+    pred = np.zeros_like(ref)
+    m = per_case_metrics(pred, ref, .343)
+    assert m["dice"] == 0 and m["recall"] == 0 and m["precision"] is None
+    assert m["false_negative_voxels"] == 4
+    with pytest.raises(ValueError, match="reference-positive"):
+        per_case_metrics(pred, pred, .343)
+    with pytest.raises(ValueError, match="different shapes"):
+        per_case_metrics(pred[:1], ref, .343)
+
+    manifest = tmp_path / "private_manifest.csv"
+    manifest.write_text("example,content\n", encoding="utf-8")
+    digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert require_same_manifest(manifest, {"manifest_sha256": digest}) == digest
+    with pytest.raises(ValueError, match="differs"):
+        require_same_manifest(manifest, {"manifest_sha256": "invalid"})
+    with pytest.raises(ValueError, match="lacks"):
+        require_same_manifest(manifest, {})
