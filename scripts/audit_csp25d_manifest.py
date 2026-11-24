@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from csp25d_baseline import load_case, read_manifest, usable_for_supervision
+from native_nifti_orientation import extract_original_native_crop
 
 
 def sha256(path):
@@ -71,15 +72,12 @@ def audit_case(row, rule_json=None, verify_original=False):
             raise ValueError("Manifest lacks original_t2; rebuild with current build-manifest")
         original = nib.load(source)
         crop = nib.load(str(crop_path))
-        start = np.asarray(meta["start_ijk"], dtype=int)
-        end = np.asarray(meta["end_ijk"], dtype=int)
-        if tuple(original.shape) != tuple(meta["source_shape_kji"][::-1]):
-            raise ValueError("Original image shape differs from crop metadata")
-        if not np.allclose(original.affine, meta["original_affine"], atol=1e-3, rtol=0):
-            raise ValueError("Original image affine differs from crop metadata")
+        # Slicer can reverse/reorder source NIfTI voxel axes on import.
+        # Require an exact affine-consistent integer reindexing; never resample.
+        # This also validates the source shape and saved crop indices.
+        roi = extract_original_native_crop(original, meta)
         if not np.allclose(crop.affine, affine, atol=1e-3, rtol=0):
             raise ValueError("Crop reloaded affine differs from loader")
-        roi = np.asarray(original.dataobj)[start[0]:end[0], start[1]:end[1], start[2]:end[2]]
         stored = np.asarray(crop.dataobj)
         if roi.shape != stored.shape or not np.allclose(
             roi, stored, atol=1e-4, rtol=0, equal_nan=True
