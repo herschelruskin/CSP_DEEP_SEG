@@ -126,6 +126,21 @@ def normalize_t2(img: np.ndarray):
     return scaled.astype(np.float32)
 
 
+def load_csp25d_checkpoint(path, map_location="cpu"):
+    """Load a CSP25D checkpoint with restricted PyTorch deserialization.
+
+    The first real Narval pilot checkpoint serialized torch.__version__ as
+    torch.torch_version.TorchVersion rather than a plain str. Allowlist only
+    that known PyTorch metadata class; keep weights_only=True to prevent
+    arbitrary pickle globals. Never use this as a guarantee for untrusted
+    third-party checkpoints.
+    """
+    from torch.torch_version import TorchVersion
+
+    with torch.serialization.safe_globals([TorchVersion]):
+        return torch.load(path, map_location=map_location, weights_only=True)
+
+
 def read_manifest(filename):
     with open(filename, newline='', encoding='utf-8-sig') as fp:
         rows = list(csv.DictReader(fp))
@@ -390,7 +405,7 @@ def train(args):
               'gpu_name': torch.cuda.get_device_name(0) if device.type == 'cuda' else None,
               'gpu_total_vram_bytes': torch.cuda.get_device_properties(0).total_memory if device.type == 'cuda' else None,
               'slices': args.slices, 'width': args.width, 'seed': args.seed, 'lr': args.lr,
-              'boundary_ignore': args.boundary_ignore, 'device': str(device), 'torch': torch.__version__,
+              'boundary_ignore': args.boundary_ignore, 'device': str(device), 'torch': str(torch.__version__),
               'manifest_sha256': manifest_hash, 'git_head': git_head,
               'train_subjects': len(train_rows), 'val_subjects': len(val_rows),
               'positive_training_slices': p, 'negative_training_slices': n,
@@ -441,7 +456,7 @@ def infer(args):
         raise ValueError('Unknown subject in manifest')
     row = found[0]
     device = torch.device('cuda' if torch.cuda.is_available() and not args.cpu else 'cpu')
-    state = torch.load(args.checkpoint, map_location=device, weights_only=False)
+    state = load_csp25d_checkpoint(args.checkpoint, map_location=device)
     cfg = state['config']
     model = CoronalUNet25D(cfg['slices'], cfg['width']).to(device)
     model.load_state_dict(state['state_dict'])
