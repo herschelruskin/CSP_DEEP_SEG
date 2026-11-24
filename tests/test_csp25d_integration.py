@@ -578,3 +578,42 @@ def test_checkpoint_per_subject_metrics_empty_prediction_and_manifest_guard(tmp_
         require_same_manifest(manifest, {"manifest_sha256": "invalid"})
     with pytest.raises(ValueError, match="lacks"):
         require_same_manifest(manifest, {})
+
+
+def test_restricted_checkpoint_loader_accepts_legacy_torch_version(tmp_path):
+    """Regression for Narval job 10452830, which failed on TorchVersion metadata."""
+    import torch
+    from torch.torch_version import TorchVersion
+    from csp25d_baseline import load_csp25d_checkpoint
+
+    ckpt_file = tmp_path / "legacy_best.pt"
+    torch.save({
+        "state_dict": {"a": torch.tensor([1.0])},
+        "config": {"torch": TorchVersion("2.14.1+computecanada"), "slices": 7, "width": 16},
+        "epoch": 1,
+    }, ckpt_file)
+
+    # Vanilla restricted loading reproduces the observed Narval failure.
+    with pytest.raises(Exception, match="TorchVersion"):
+        torch.load(ckpt_file, weights_only=True)
+
+    restored = load_csp25d_checkpoint(ckpt_file, map_location="cpu")
+    assert restored["epoch"] == 1
+    assert restored["config"]["slices"] == 7
+    assert str(restored["config"]["torch"]) == "2.14.1+computecanada"
+    assert torch.equal(restored["state_dict"]["a"], torch.tensor([1.0]))
+
+
+def test_restricted_checkpoint_loader_rejects_unrelated_pickle_global(tmp_path):
+    """The fix must not relax the checkpoint loader to weights_only=False."""
+    import torch
+    from csp25d_baseline import load_csp25d_checkpoint
+
+    class DangerousCustomMetadata:
+        def __init__(self):
+            self.example = "unknown-class-must-not-be-loaded"
+
+    ckpt_file = tmp_path / "untrusted_global.pt"
+    torch.save({"state_dict": {}, "config": {"custom": DangerousCustomMetadata()}}, ckpt_file)
+    with pytest.raises(Exception, match="Unsupported global"):
+        load_csp25d_checkpoint(ckpt_file, map_location="cpu")
