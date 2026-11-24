@@ -360,3 +360,57 @@ def test_signed_permutation_voxel_proof_but_coronal_model_still_rejects_axis_swa
     np.testing.assert_array_equal(expected, np.asarray(nib.load(str(crop_path)).dataobj))
     with pytest.raises(ValueError, match="Non-coronal native axis order"):
         audit_case(row, rules_path, verify_original=True)
+
+
+def test_compact_csp_mask_export_preserves_every_label_and_loads(tmp_path):
+    """An exported native 1% ROI labelmap can replace its full-brain source in TRAIN."""
+    from prepare_csp25d_roi_masks import export_one
+    from csp25d_baseline import load_case
+    row, rules_path, crop_path, _ = make_case(tmp_path)
+    target = export_one(row, tmp_path / "roi_masks")
+    assert target.name == "111111_csp_roi_mask.nii.gz"
+    original = nib.load(row["source_mask"])
+    reference = nib.load(str(target))
+    crop = nib.load(str(crop_path))
+    assert reference.shape == crop.shape
+    np.testing.assert_allclose(reference.affine, crop.affine, atol=1e-3)
+    assert np.asarray(reference.dataobj).dtype == np.uint8
+    assert np.count_nonzero(np.asarray(reference.dataobj)) == np.count_nonzero(np.asarray(original.dataobj))
+    compact_row = dict(row, source_mask=str(target))
+    image, mask, _, _ = load_case(row["subject_id"], row["crop_t2"], row["crop_json"], str(target), "present")
+    assert mask.sum() == 1 and image.shape == mask.shape
+    assert audit_case(compact_row, rules_path, verify_original=True)["mask_voxels"] == 1
+    # Rerunning the exporter is idempotent, never changes matching data.
+    assert export_one(row, tmp_path / "roi_masks") == target
+
+
+def test_compact_mask_rejects_wrong_affine_and_nonbinary_values(tmp_path):
+    from prepare_csp25d_roi_masks import export_one
+    from csp25d_baseline import load_case
+    row, _, crop_path, _ = make_case(tmp_path)
+    target = export_one(row, tmp_path / "roi_masks")
+    good = nib.load(str(target))
+    data = np.asarray(good.dataobj)
+    shifted = good.affine.copy()
+    shifted[0, 3] += 4
+    bad_path = tmp_path / "wrong_affine.nii.gz"
+    nib.save(nib.Nifti1Image(data, shifted), bad_path)
+    with pytest.raises(ValueError, match="Cropped CSP mask affine"):
+        load_case(row["subject_id"], row["crop_t2"], row["crop_json"], str(bad_path), "present")
+    corrupt = data.copy()
+    corrupt[0, 0, 0] = 2
+    bad_values = tmp_path / "nonbinary.nii.gz"
+    nib.save(nib.Nifti1Image(corrupt, good.affine), bad_values)
+    with pytest.raises(ValueError, match="Nonbinary mask"):
+        load_case(row["subject_id"], row["crop_t2"], row["crop_json"], str(bad_values), "present")
+
+
+def test_roi_mask_export_refuses_loss_of_any_reference_voxel(tmp_path):
+    from prepare_csp25d_roi_masks import export_one
+    row, _, _, _ = make_case(tmp_path)
+    ref = nib.load(row["source_mask"])
+    data = np.asarray(ref.dataobj).copy()
+    data[0, 0, 0] = 1  # Outside the 2:11,3:12,4:13 crop
+    nib.save(nib.Nifti1Image(data, ref.affine), row["source_mask"])
+    with pytest.raises(ValueError, match="Full CSP containment"):
+        export_one(row, tmp_path / "roi_masks")
