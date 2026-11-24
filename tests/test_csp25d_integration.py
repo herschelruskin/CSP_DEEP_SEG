@@ -414,3 +414,55 @@ def test_roi_mask_export_refuses_loss_of_any_reference_voxel(tmp_path):
     nib.save(nib.Nifti1Image(data, ref.affine), row["source_mask"])
     with pytest.raises(ValueError, match="Full CSP containment"):
         export_one(row, tmp_path / "roi_masks")
+
+
+def test_unknown_family_exploratory_split_volume_stratified_and_deterministic():
+    """Subject-disjoint 55-case fallback keeps every reviewed-but-ineligible row unassigned."""
+    from split_csp25d_exploratory import stratify_subjects
+    rows = [
+        dict(subject_id=str(200000 + i), split="unassigned", presence="present",
+             qc="provisional", source_mask=f"{i}.nii.gz", family_group="")
+        for i in range(55)
+    ]
+    rows += [
+        dict(subject_id="999001", split="unassigned", presence="present",
+             qc="needs_review", source_mask="review.nii.gz", family_group=""),
+        dict(subject_id="999002", split="unassigned", presence="absent",
+             qc="provisional", source_mask="", family_group=""),
+    ]
+    audit = [
+        dict(subject_id=str(200000 + i), status="PASS", mask_voxels=str(i + 1))
+        for i in range(55)
+    ]
+    result, bins = stratify_subjects(rows, audit, seed=843)
+    repeat, repeat_bins = stratify_subjects(rows, audit, seed=843)
+    assert (result, bins) == (repeat, repeat_bins)
+    assert len(result) == 55
+    assert sum(x == "val" for x in result.values()) == 11
+    assert sum(x == "train" for x in result.values()) == 44
+    assert "999001" not in result and "999002" not in result
+    for index in (1, 2, 3):
+        members = {sid for sid, b in bins.items() if b == index}
+        assert any(result[sid] == "train" for sid in members)
+        assert any(result[sid] == "val" for sid in members)
+    assert [sum(bins[sid] == j and result[sid] == "val" for sid in result)
+            for j in (1, 2, 3)] == [4, 4, 3]
+
+
+def test_unknown_family_split_rejects_partial_audits_and_family_info():
+    from split_csp25d_exploratory import stratify_subjects
+    rows = [
+        dict(subject_id=str(i), split="unassigned", presence="present",
+             qc="provisional", source_mask="mask.nii.gz", family_group="")
+        for i in range(12)
+    ]
+    audit = [dict(subject_id=str(i), status="PASS", mask_voxels=str(i + 1))
+             for i in range(12)]
+    with pytest.raises(ValueError, match="every eligible"):
+        stratify_subjects(rows, audit[:-1])
+    with pytest.raises(ValueError, match="nonpassing"):
+        stratify_subjects(rows, [dict(row, status="FAIL") if row["subject_id"] == "1" else row for row in audit])
+    with pytest.raises(ValueError, match="Family group"):
+        stratify_subjects([dict(row, family_group="A") if row["subject_id"] == "1" else row for row in rows], audit)
+    with pytest.raises(ValueError, match="assigned splits"):
+        stratify_subjects([dict(row, split="train") if row["subject_id"] == "1" else row for row in rows], audit)
