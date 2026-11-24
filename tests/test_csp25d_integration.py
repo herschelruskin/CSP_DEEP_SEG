@@ -620,3 +620,109 @@ def test_restricted_checkpoint_loader_rejects_unrelated_pickle_global(tmp_path):
     torch.save({"state_dict": {}, "config": {"custom": UnsupportedCheckpointMetadata()}}, ckpt_file)
     with pytest.raises(Exception, match="Unsupported global"):
         load_csp25d_checkpoint(ckpt_file, map_location="cpu")
+
+
+def test_spatial_qc_connected_components_and_fp_attachment():
+    """Separate an oversized CSP main blob from a disconnected false-positive island."""
+    from export_csp25d_spatial_qc import connected_components, error_labelmap, spatial_qc
+    ref = np.zeros((6, 6, 6), dtype=np.uint8)
+    pred = np.zeros_like(ref)
+    ref[3, 3, 3] = 1
+    ref[3, 4, 3] = 1  # one reference voxel is missing
+    pred[3, 3, 3] = 1  # TP
+    pred[3, 3, 4] = 1  # FP contiguous with TP
+    pred[0, 0, 0] = 1  # isolated FP
+    error = error_labelmap(pred, ref)
+    assert np.count_nonzero(error == 1) == 1
+    assert np.count_nonzero(error == 2) == 2
+    assert np.count_nonzero(error == 3) == 1
+    report = spatial_qc(pred, ref)
+    for conn in (6, 26):
+        assert report[f"c{conn}_pred_components"] == 2
+        assert report[f"c{conn}_largest_pred_voxels"] == 2
+        assert report[f"c{conn}_largest_pred_tp_voxels"] == 1
+        assert report[f"c{conn}_largest_pred_fp_voxels"] == 1
+        assert report[f"c{conn}_fp_voxels_outside_largest_pred"] == 1
+        assert report[f"c{conn}_extra_pred_components"] == 1
+        assert report[f"c{conn}_extra_pred_voxels"] == 1
+        assert report[f"c{conn}_fp_only_components"] == 2
+        assert sum(map(len, connected_components(pred, conn))) == 3
+
+
+def test_spatial_qc_edge_corner_connection_and_empty_prediction():
+    from export_csp25d_spatial_qc import connected_components, spatial_qc
+    ref = np.zeros((4, 4, 4), dtype=bool)
+    pred = np.zeros_like(ref)
+    ref[1, 1, 1] = True
+    pred[1, 1, 1] = True
+    pred[2, 2, 2] = True  # diagonal-only: 6 != 26
+    assert len(connected_components(pred, 6)) == 2
+    assert len(connected_components(pred, 26)) == 1
+    report = spatial_qc(pred, ref)
+    assert report["c6_fp_voxels_outside_largest_pred"] == 1
+    assert report["c26_fp_voxels_outside_largest_pred"] == 0
+    assert len(connected_components(np.zeros((2, 2, 2)), 26)) == 0
+    assert spatial_qc(np.zeros_like(pred), ref)["c26_pred_components"] == 0
+
+
+def test_spatial_qc_export_nifti_identical_geometry_and_zip(tmp_path):
+    """Exporter creates lossless cropped T2 plus aligned Slicer labelmaps and ZIP."""
+    import hashlib
+    import zipfile
+    from export_csp25d_spatial_qc import (
+        export_case_files, build_zip, verify_prior_metrics, _load_expected_metrics,
+    )
+    from evaluate_csp25d_checkpoint import per_case_metrics
+
+    affine = np.diag([.7, .7, .7, 1.0])
+    affine[:3, 3] = [12.3, -25, 44]
+    t2 = np.arange(5 * 7 * 8, dtype=np.float32).reshape(5, 7, 8)
+    crop = tmp_path / "orig.nii.gz"
+    nib.save(nib.Nifti1Image(t2, affine), crop)
+    ref = np.zeros(t2.shape, dtype=np.uint8)
+    ref[2, 3, 4] = 1
+    ref[2, 3, 5] = 1
+    prob = np.zeros(t2.shape, dtype=np.float32)
+    prob[2, 3, 4] = .9  # true positive
+    prob[2, 3, 6] = .8  # false positive
+    packaged = tmp_path / "csp25d_spatial_qc"
+    case_dir = packaged / "cases" / "123456"
+    pred = export_case_files(case_dir, "123456", crop, prob, affine, ref, .5)
+    assert pred.dtype == np.bool_
+    assert (case_dir / "T2_crop.nii.gz").read_bytes() == crop.read_bytes()
+    for name in ("manual_CSP", "predicted_CSP", "probability_CSP",
+                 "error_TP1_FP2_FN3"):
+        vol = nib.load(str(case_dir / (name + ".nii.gz")))
+        assert vol.shape == t2.shape
+        assert np.allclose(vol.affine, affine, atol=1e-6)
+    codes = np.asarray(nib.load(str(case_dir / "error_TP1_FP2_FN3.nii.gz")).dataobj)
+    assert codes[2, 3, 4] == 1
+    assert codes[2, 3, 6] == 2
+    assert codes[2, 3, 5] == 3
+    assert np.count_nonzero(codes) == 3
+    assert np.array_equal(
+        np.asarray(nib.load(str(case_dir / "manual_CSP.nii.gz")).dataobj), ref)
+
+    m = per_case_metrics(pred, ref, .343)
+    prior_file = tmp_path / "prior.csv"
+    import csv
+    with prior_file.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["subject_id", *m.keys()])
+        writer.writeheader()
+        writer.writerow({"subject_id": "123456", **m})
+    prior = _load_expected_metrics(prior_file, ["123456"])
+    verify_prior_metrics("123456", m, prior)
+    with pytest.raises(ValueError, match="Dice differs"):
+        verify_prior_metrics("123456", dict(m, dice=.1), prior)
+    with pytest.raises(ValueError, match="prior per-case metrics"):
+        _load_expected_metrics(prior_file, ["123456", "wrong"])
+
+    archive = tmp_path / "csp25d_spatial_qc.zip"
+    build_zip(packaged, archive)
+    with zipfile.ZipFile(archive) as zipfile_handle:
+        assert zipfile_handle.testzip() is None
+        member = "csp25d_spatial_qc/cases/123456/T2_crop.nii.gz"
+        assert hashlib.sha256(zipfile_handle.read(member)).hexdigest() == hashlib.sha256(
+            crop.read_bytes()).hexdigest()
+    with pytest.raises(FileExistsError, match="existing QC ZIP"):
+        build_zip(packaged, archive)
