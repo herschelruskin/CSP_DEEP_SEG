@@ -12,6 +12,13 @@ from csp25d_baseline import class_subject_balanced_weights, read_manifest
 from audit_csp25d_manifest import audit_case
 
 
+class UnsupportedCheckpointMetadata:
+    """Picklable synthetic class that restricted checkpoint loading must reject."""
+
+    def __init__(self):
+        self.example = "unknown-class-must-not-be-loaded"
+
+
 def test_subject_and_class_balancing():
     index = (
         [("tiny", 0, True)] +
@@ -609,11 +616,7 @@ def test_restricted_checkpoint_loader_rejects_unrelated_pickle_global(tmp_path):
     import torch
     from csp25d_baseline import load_csp25d_checkpoint
 
-    class DangerousCustomMetadata:
-        def __init__(self):
-            self.example = "unknown-class-must-not-be-loaded"
-
     ckpt_file = tmp_path / "untrusted_global.pt"
-    torch.save({"state_dict": {}, "config": {"custom": DangerousCustomMetadata()}}, ckpt_file)
+    torch.save({"state_dict": {}, "config": {"custom": UnsupportedCheckpointMetadata()}}, ckpt_file)
     with pytest.raises(Exception, match="Unsupported global"):
         load_csp25d_checkpoint(ckpt_file, map_location="cpu")
