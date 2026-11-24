@@ -1,7 +1,7 @@
 """Manual HCP CSP prediction QC helper, run *inside 3D Slicer Python Console*.
 
 Run once after extracting the private QC ZIP at home:
-    exec(open(r'D:\CSP_DEEP_SEG\derived\csp25d_spatial_qc\slicer_csp25d_qc_loader.py', encoding='utf-8').read()); load_csp25d_qc()
+    exec(open(str(__import__('pathlib').Path.home()/'Downloads'/'csp25d_spatial_qc'/'slicer_csp25d_qc_loader.py'), encoding='utf-8').read()); load_csp25d_qc()
 
 Choose the cases/<subject ID> directory in the file picker.
 
