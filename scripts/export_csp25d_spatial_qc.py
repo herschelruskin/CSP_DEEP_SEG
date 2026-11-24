@@ -279,6 +279,25 @@ def main():
         writer = csv.DictWriter(out, fieldnames=list(output_rows[0]))
         writer.writeheader()
         writer.writerows(output_rows)
+    # Manual Slicer review is qualitative and must be recorded separately from
+    # the algorithmic connected-component counts. Never rewrite the ground truth.
+    with (output_dir / "manual_review_template.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as out:
+        writer = csv.DictWriter(
+            out,
+            fieldnames=[
+                "subject_id", "reviewed", "correct_CSP_localization",
+                "one_enlarged_component_or_multiple",
+                "adjacent_ventricular_CSF_leakage", "isolated_FP_islands",
+                "AP_overextension", "SI_overextension", "LR_overextension",
+                "manual_reference_uncertainty", "reviewer_notes",
+            ],
+        )
+        writer.writeheader()
+        for row in output_rows:
+            writer.writerow({"subject_id": row["subject_id"], "reviewed": "no"})
+
     report_summary = {
         "experiment": "2.5D CSP frozen epoch-1 positive-only validation QC",
         "threshold": args.threshold,
@@ -327,6 +346,9 @@ def main():
         "Reference and Predicted segmentations are also loaded, initially hidden.",
         "Use Segmentations module to toggle them; start with coronal, inspect all 3 planes.",
         "",
+        "Fill manual_review_template.csv during visual QC (save a copy separately).",
+        "Record localization, ventricular leakage, disconnected FP islands, and AP/SI/LR extension.",
+        "Leave uncertain anatomical interpretations as uncertain, not automatically FP.",
         "Read component_report.csv for 6-neighbor and 26-neighbor component counts.",
         "A FP-only component can touch the main predicted CSP and is NOT necessarily",
         "a disconnected prediction. Compare largest predicted cluster and FP outside it.",
