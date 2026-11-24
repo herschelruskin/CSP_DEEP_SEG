@@ -466,3 +466,70 @@ def test_unknown_family_split_rejects_partial_audits_and_family_info():
         stratify_subjects([dict(row, family_group="A") if row["subject_id"] == "1" else row for row in rows], audit)
     with pytest.raises(ValueError, match="assigned splits"):
         stratify_subjects([dict(row, split="train") if row["subject_id"] == "1" else row for row in rows], audit)
+
+
+def test_staging_archive_preserves_44_11_split_and_private_sha256(tmp_path):
+    """ZIP has exactly 55 compact native ROI cases and auditable manifest paths."""
+    import csv
+    import hashlib
+    import zipfile
+    from package_csp25d_pilot import make_package
+    root = tmp_path / "private_windows"
+    root.mkdir()
+    columns = ["subject_id", "split", "family_group", "crop_t2", "crop_json",
+               "source_mask", "presence", "qc", "negative_confidence", "original_t2"]
+    rows, checks = [], []
+    for i in range(55):
+        sid = str(200000 + i)
+        folder = root / sid
+        folder.mkdir()
+        t2 = folder / (sid + "_3T_T2w_SPC1_proportional_reduced.nii.gz")
+        crop_json = folder / (sid + "_3T_T2w_SPC1_proportional_reduced.crop.json")
+        mask = folder / (sid + "_csp_roi_mask.nii.gz")
+        t2.write_bytes(b"csp t2 compressed " + sid.encode())
+        crop_json.write_bytes(b'{"start_ijk":[1,2,3]}')
+        mask.write_bytes(b"binary compact mask " + sid.encode())
+        sidecar = folder / (sid + "_csp_roi_mask.provenance.json")
+        sidecar.write_text(json.dumps({
+            "subject_id": sid, "mask_voxels": i + 1,
+            "cropped_mask_sha256": hashlib.sha256(mask.read_bytes()).hexdigest(),
+            "crop_json_sha256": hashlib.sha256(crop_json.read_bytes()).hexdigest(),
+        }))
+        rows.append(dict(subject_id=sid, split="train" if i < 44 else "val",
+                         family_group="", crop_t2=str(t2), crop_json=str(crop_json),
+                         source_mask=str(mask), original_t2=str(folder / "wholebrain.nii.gz"),
+                         presence="present", qc="provisional", negative_confidence=""))
+        checks.append(dict(subject_id=sid, status="PASS", mask_voxels=str(i+1)))
+    manifest = root / "split.csv"
+    audit = root / "audit.csv"
+    with manifest.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    with audit.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["subject_id", "status", "mask_voxels"])
+        writer.writeheader()
+        writer.writerows(checks)
+    rule = root / "rules.json"
+    rule.write_text('{"rules":{"proportional":{"mode":"proportional"}}}')
+    archive = root / "pilot.zip"
+    return_values = make_package(manifest, audit, rule, archive, "/scratch/user/csp25d/seed843")
+    assert return_values == archive
+    with zipfile.ZipFile(archive) as z:
+        assert z.testzip() is None
+        assert len(z.namelist()) == 224  # 55 x 4 + 3 metadata + 1 SHA256 manifest
+        with z.open("manifests/model_25d_trainval_seed843_linux.csv") as handle:
+            linux = list(csv.DictReader(handle.read().decode("utf-8").splitlines()))
+        assert len(linux) == 55 and sum(x["split"] == "val" for x in linux) == 11
+        assert all(x["original_t2"] == "" and x["source_mask"].startswith("/scratch/user/csp25d/seed843/masks/")
+                   for x in linux)
+        for entry in csv.DictReader(z.read("manifests/file_sha256.csv").decode().splitlines()):
+            assert hashlib.sha256(z.read(entry["path"])).hexdigest() == entry["sha256"]
+            assert len(z.read(entry["path"])) == int(entry["bytes"])
+    with pytest.raises(FileExistsError, match="existing package"):
+        make_package(manifest, audit, rule, archive, "/scratch/user/csp25d/seed843")
+
+    # The exporter sidecar is a hard integrity boundary, not decorative metadata.
+    (root / "200000" / "200000_csp_roi_mask.nii.gz").write_bytes(b"tampered mask")
+    with pytest.raises(ValueError, match="SHA256 differs"):
+        make_package(manifest, audit, rule, root / "second.zip", "/scratch/user/csp25d/seed843")
