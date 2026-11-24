@@ -15,6 +15,8 @@ from pathlib import Path
 
 import numpy as np
 
+from native_nifti_orientation import extract_original_native_crop
+
 ORIGINAL_SUFFIX = "_3T_T2w_SPC1.nii.gz"
 CROP_SUFFIX = "_3T_T2w_SPC1_proportional_reduced.nii.gz"
 META_SUFFIX = "_3T_T2w_SPC1_proportional_reduced.crop.json"
@@ -95,14 +97,9 @@ def audit_one(sid, crop, metadata, frozen_rule, original=None, verify_original=F
         if original is None:
             raise ValueError("Original source T2 unavailable for voxel equality")
         source = nib.load(str(original))
-        source_shape = tuple(meta["source_shape_kji"][::-1])
-        if source.shape != source_shape:
-            raise ValueError("Original T2 shape mismatch")
-        if not np.allclose(source.affine, meta["original_affine"], atol=1e-3, rtol=0):
-            raise ValueError("Original T2 affine mismatch")
-        i0, j0, k0 = meta["start_ijk"]
-        i1, j1, k1 = meta["end_ijk"]
-        original_roi = np.asarray(source.dataobj)[i0:i1, j0:j1, k0:k1]
+        # Slicer may store the native source grid with flipped/permuted axes.
+        # Match the recorded RAS affine via exact index operations (no resampling).
+        original_roi = extract_original_native_crop(source, meta)
         stored = np.asarray(image.dataobj)
         if original_roi.shape != stored.shape or not np.allclose(
             original_roi, stored, atol=1e-4, rtol=0, equal_nan=True
