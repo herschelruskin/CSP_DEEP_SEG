@@ -153,3 +153,17 @@ To retest all eligible masks on the Windows workstation, refresh the three files
     python "D:\CSP_DEEP_SEG\CSP_crop\scripts\audit_csp25d_manifest.py" --manifest "D:\CSP_DEEP_SEG\derived\model_25d_manifest.csv" --rule-json "D:\CSP_DEEP_SEG\derived\roi_calibration\results_corrected_112112\calibrated_rules.json" --verify-original --eligible-only --report "D:\CSP_DEEP_SEG\derived\model_25d_mask_source_voxel_audit.csv"
 
 Do not claim all 55 have exact source-voxel equality until the Windows rerun passes. Afterward, family-safe split and small private transfer precede real-mask overfitting on GPU.
+
+### 2026-11-24 — Lossless compact CSP ROI masks for efficient HPC transfers
+
+- Earlier Windows 55/55 source-image, mask, and containment audit remains a proof about the original full native mask files; preserve it.
+- New scripts/prepare_csp25d_roi_masks.py converts full Slicer-native binary references into uint8 .nii.gz masks on the exact native 1% T2 crop grid, by lossless integer slicing, never resampling. It requires all reference positive voxels contained, refuses mismatched geometry and nonbinary labels, emits PRIVATE SHA256 provenance sidecars and a new PRIVATE manifest without modifying originals.
+- Model scripts/csp25d_baseline.py load_case now handles either full native binary mask with whole-mask containment check or cropped binary mask exactly aligned to crop T2 affine. The compact branch cannot independently recheck original whole-mask containment on Narval without original full source; conversion and earlier workstation preflight establish it.
+- Subject 100408: original grid 256x320x320=26,214,400 voxels; crop 51x70x68=242,760 voxels (108.0x fewer), retaining all 42 CSP voxels; gzip saves further space.
+- Before any Narval real-data overfit, check newly added integration tests and GitHub Actions status, refresh code on Narval to support ROI masks, transfer cropped mask and rewrite PRIVATE one-subject Linux-path train manifest.
+
+Windows export (PowerShell; refresh scripts/prepare_csp25d_roi_masks.py and scripts/csp25d_baseline.py locally first):
+
+    python "D:\CSP_DEEP_SEG\CSP_crop\scripts\prepare_csp25d_roi_masks.py" --manifest "D:\CSP_DEEP_SEG\derived\model_25d_manifest.csv" --subject-id 100408 --eligible-only --out-dir "D:\CSP_DEEP_SEG\derived\roi_batch\csp_roi_masks" --output-manifest "D:\CSP_DEEP_SEG\derived\model_25d_compact_mask_manifest.csv"
+
+Then audit the compact-mask manifest locally against original T2 for 100408 with --verify-original, create/upload new private one-row Linux train manifest pointing to compressed mask and transfer to Narval scratch. Do NOT upload private masks/manifests or scans to public GitHub.
