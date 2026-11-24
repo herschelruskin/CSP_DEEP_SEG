@@ -265,3 +265,86 @@ def test_manifest_reconcile_refuses_duplicate_subjects_and_source_mismatch():
                       original_t2="222222_3T_T2w_SPC1.nii.gz")]
     accepted, rejected = reconcile([row], inventory)
     assert not accepted and rejected[0]["reason"].startswith("Original T2")
+
+
+def make_reindexed_slicer_case(tmp_path, axes, flips):
+    """Simulate Slicer's lossless native voxel reindexing of a raw NIfTI."""
+    row, rules_path, crop_path, _ = make_case(tmp_path)
+    source = nib.load(row["original_t2"])
+    raw = np.asarray(source.dataobj)
+    native_mask = np.asarray(nib.load(row["source_mask"]).dataobj)
+    transform = np.eye(4)
+    transform[:3, :3] = 0
+    for target_axis, source_axis in enumerate(axes):
+        transform[source_axis, target_axis] = -1 if flips[target_axis] else 1
+        if flips[target_axis]:
+            transform[source_axis, 3] = source.shape[source_axis] - 1
+    slicer_affine = source.affine @ transform
+
+    def transform_array(array):
+        result = np.transpose(array, axes)
+        for axis, flipped in enumerate(flips):
+            if flipped:
+                result = np.flip(result, axis=axis)
+        return np.ascontiguousarray(result)
+
+    raw_slicer = transform_array(raw)
+    mask_slicer = transform_array(native_mask)
+    meta_path = Path(row["crop_json"])
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    start, end = np.array(meta["start_ijk"]), np.array(meta["end_ijk"])
+    crop_affine = slicer_affine.copy()
+    crop_affine[:3, 3] = (slicer_affine @ np.r_[start, 1.0])[:3]
+    cropped_slicer = raw_slicer[tuple(slice(lo, hi) for lo, hi in zip(start, end))]
+    nib.save(nib.Nifti1Image(cropped_slicer, crop_affine), crop_path)
+    nib.save(nib.Nifti1Image(mask_slicer, slicer_affine), row["source_mask"])
+    meta["original_affine"] = slicer_affine.tolist()
+    meta["output_affine"] = crop_affine.tolist()
+    meta["source_shape_kji"] = list(raw_slicer.shape[::-1])
+    meta["cropped_shape_kji"] = list(cropped_slicer.shape[::-1])
+    meta["retained_voxel_fraction"] = cropped_slicer.size / raw.size
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+    return row, rules_path, crop_path, meta_path
+
+
+@pytest.mark.parametrize("axes,flips", [
+    ((0, 1, 2), (False, False, True)),  # Observed Slicer reversal of K.
+    ((0, 1, 2), (True, False, True)),   # Multiple sign reversals.
+    ((2, 1, 0), (False, False, True)),  # Signed permutation, no interpolation.
+])
+def test_slicer_native_axis_reindexing_retains_exact_original_voxels(tmp_path, axes, flips):
+    from inventory_csp25d_crops import audit_one
+    row, rule_path, crop_path, meta_path = make_reindexed_slicer_case(
+        tmp_path, axes, flips
+    )
+    result = audit_case(row, rule_path, verify_original=True)
+    assert result["mask_voxels"] == 1
+    frozen_rule = json.loads(rule_path.read_text())["rules"]["proportional"]
+    retained, shape = audit_one(row["subject_id"], crop_path, meta_path,
+                                frozen_rule, original=Path(row["original_t2"]),
+                                verify_original=True)
+    assert np.isclose(retained, 9 ** 3 / 14 ** 3)
+    assert shape == "9x9x9"
+
+
+def test_slicer_axis_reindexed_crop_still_detects_modified_original_voxel(tmp_path):
+    row, rules_path, crop_path, _ = make_reindexed_slicer_case(
+        tmp_path, (0, 1, 2), (False, False, True)
+    )
+    image = nib.load(str(crop_path))
+    modified = np.asarray(image.dataobj).copy()
+    modified[2, 2, 2] += 1
+    nib.save(nib.Nifti1Image(modified, image.affine), crop_path)
+    with pytest.raises(ValueError, match="voxel values differ"):
+        audit_case(row, rules_path, verify_original=True)
+
+
+def test_slicer_axis_reindexing_rejects_unexplained_affine(tmp_path):
+    from native_nifti_orientation import extract_original_native_crop
+    row, _, _, meta_path = make_reindexed_slicer_case(
+        tmp_path, (0, 1, 2), (False, False, True)
+    )
+    metadata = json.loads(meta_path.read_text())
+    metadata["original_affine"][0][3] += 5
+    with pytest.raises(ValueError, match="cannot be uniquely matched"):
+        extract_original_native_crop(nib.load(row["original_t2"]), metadata)
