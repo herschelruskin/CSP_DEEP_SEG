@@ -310,7 +310,6 @@ def make_reindexed_slicer_case(tmp_path, axes, flips):
 @pytest.mark.parametrize("axes,flips", [
     ((0, 1, 2), (False, False, True)),  # Observed Slicer reversal of K.
     ((0, 1, 2), (True, False, True)),   # Multiple sign reversals.
-    ((2, 1, 0), (False, False, True)),  # Signed permutation, no interpolation.
 ])
 def test_slicer_native_axis_reindexing_retains_exact_original_voxels(tmp_path, axes, flips):
     from inventory_csp25d_crops import audit_one
@@ -348,3 +347,16 @@ def test_slicer_axis_reindexing_rejects_unexplained_affine(tmp_path):
     metadata["original_affine"][0][3] += 5
     with pytest.raises(ValueError, match="cannot be uniquely matched"):
         extract_original_native_crop(nib.load(row["original_t2"]), metadata)
+
+
+def test_signed_permutation_voxel_proof_but_coronal_model_still_rejects_axis_swap(tmp_path):
+    """The verifier supports permutations, but the frozen model forbids swapped MRI axes."""
+    from native_nifti_orientation import extract_original_native_crop
+    row, rules_path, crop_path, meta_path = make_reindexed_slicer_case(
+        tmp_path, (2, 1, 0), (False, False, True)
+    )
+    metadata = json.loads(meta_path.read_text())
+    expected = extract_original_native_crop(nib.load(row["original_t2"]), metadata)
+    np.testing.assert_array_equal(expected, np.asarray(nib.load(str(crop_path)).dataobj))
+    with pytest.raises(ValueError, match="Non-coronal native axis order"):
+        audit_case(row, rules_path, verify_original=True)
