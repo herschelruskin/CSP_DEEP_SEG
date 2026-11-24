@@ -340,7 +340,7 @@ def main():
         "",
         "In 3D Slicer, open Python Console (View > Python Interactor).",
         "Paste ONE line with the actual extracted Windows path:",
-        "exec(open(r'D:\\CSP_DEEP_SEG\\derived\\csp25d_spatial_qc\\slicer_csp25d_qc_loader.py', encoding='utf-8').read()); load_csp25d_qc()",
+        "exec(open(str(__import__('pathlib').Path.home()/'Downloads'/'csp25d_spatial_qc'/'slicer_csp25d_qc_loader.py'), encoding='utf-8').read()); load_csp25d_qc()",
         "Choose an extracted cases/<subject_id> directory in the file dialog.",
         "Green = correct overlap, red = extra prediction, blue = missed CSP.",
         "Reference and Predicted segmentations are also loaded, initially hidden.",
