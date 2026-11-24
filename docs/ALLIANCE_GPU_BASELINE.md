@@ -138,3 +138,18 @@ python "$CSP_REPO/scripts/overfit_csp25d_real.py" --manifest "$CSP_MANIFEST" --s
 Run this command **inside a requested GPU compute allocation**, not on a login node. The diagnostic logs optimization loss and Dice on the EXACT training center slice used for updates; it is not subject-disjoint validation and cannot be cited as generalization performance. If it cannot memorize a trusted small mask, diagnose image/mask alignment, normalization and sampling before launching longer runs. The Slurm pilot remains in `scripts/hpc/train_csp25d.sbatch` and should follow only after basic integration succeeds.
 
 **Actual cluster and project permissions remain user-specific and unverified.** Start by inspecting accessible association/account, modules and GPU partitions, and checking applicable HCP data-use/Alliance policies before any transfer. Nibi (`nibi.alliancecan.ca`) is a candidate login host, not a confirmed allocation for this account. The Python module version shown in the earlier example is NOT verified.
+
+
+## 2026-11-24 addendum — Narval GPU and source-voxel orientation
+
+The user completed Narval activation and opportunistic GPU association def-nwc_gpu; Python 3.11.5 and PyTorch 2.14.1 CUDA runtime 13.2 installed. 20/20 original synthetic CPU tests passed on Narval, and a real allocated A100 MIG GPU performed the seven-channel CSP U-Net dummy forward/backward: 489,281 parameters, 30.46 MB peak Torch allocation for a 128x128 synthetic input. Real MRI training has NOT started.
+
+Private workstation audits: 1,112/1,113 crop files passed native geometry/provenance inventory; 69/70 annotations reconciled (55 provisional positives eligible, nine review-flagged positives, five operationally absent). All 55 provisional positives passed internal mask containment. No family group metadata or split assigned.
+
+At least one HCP source NIfTI loads in Slicer with a reversed K voxel axis compared with NiBabel's disk array. An independently user-run exact index-reversal comparison established ~1e-5 mm affine residual and 0 crop voxel intensity difference. The prior original-source verification assumed direct equality of array index orientation. New scripts/native_nifti_orientation.py instead matches a unique signed integer-axis permutation and compares native original voxels without resampling, used by both audit scripts. The crop rule and saved MRI data are unchanged.
+
+To retest all eligible masks on the Windows workstation, refresh the three files native_nifti_orientation.py, audit_csp25d_manifest.py and inventory_csp25d_crops.py in D:\CSP_DEEP_SEG\CSP_crop\scripts from the feature branch, then run:
+
+    python "D:\CSP_DEEP_SEG\CSP_crop\scripts\audit_csp25d_manifest.py" --manifest "D:\CSP_DEEP_SEG\derived\model_25d_manifest.csv" --rule-json "D:\CSP_DEEP_SEG\derived\roi_calibration\results_corrected_112112\calibrated_rules.json" --verify-original --eligible-only --report "D:\CSP_DEEP_SEG\derived\model_25d_mask_source_voxel_audit.csv"
+
+Do not claim all 55 have exact source-voxel equality until the Windows rerun passes. Afterward, family-safe split and small private transfer precede real-mask overfitting on GPU.
