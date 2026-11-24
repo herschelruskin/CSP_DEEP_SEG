@@ -21,7 +21,7 @@ import numpy as np
 import torch
 
 from csp25d_baseline import (
-    CoronalUNet25D, load_case, predict_case, read_manifest, usable_for_supervision,
+    CoronalUNet25D, load_case, load_csp25d_checkpoint, predict_case, read_manifest, usable_for_supervision,
 )
 
 
@@ -93,7 +93,7 @@ def main():
     if args.require_cuda and device.type != "cuda":
         raise SystemExit("CUDA required; refusing to evaluate on login-node CPU")
 
-    checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
+    checkpoint = load_csp25d_checkpoint(args.checkpoint, map_location="cpu")
     config = checkpoint.get("config")
     if not isinstance(config, dict):
         raise ValueError("Checkpoint lacks 2.5D config")
