@@ -714,7 +714,7 @@ def test_spatial_qc_export_nifti_identical_geometry_and_zip(tmp_path):
     verify_prior_metrics("123456", m, prior)
     with pytest.raises(ValueError, match="Dice differs"):
         verify_prior_metrics("123456", dict(m, dice=.1), prior)
-    with pytest.raises(ValueError, match="prior per-case metrics"):
+    with pytest.raises(ValueError, match="[Pp]rior per-case metrics"):
         _load_expected_metrics(prior_file, ["123456", "wrong"])
 
     archive = tmp_path / "csp25d_spatial_qc.zip"
