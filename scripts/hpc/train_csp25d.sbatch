@@ -13,6 +13,15 @@ set -euo pipefail
 : "${CSP_RULE_JSON:?Set CSP_RULE_JSON to the PRIVATE calibrated_rules.json}"
 : "${CSP_OUT:?Set CSP_OUT to a writable output directory}"
 
+# Repeated-seed runs must have separate directories; never overwrite a checkpoint.
+if [[ -e "$CSP_OUT/best.pt" || -e "$CSP_OUT/history.csv" || -e "$CSP_OUT/config.json" || -e "$CSP_OUT/preflight.csv" ]]; then
+    echo "[CSP25D] REFUSING overwrite of an existing training run: $CSP_OUT" >&2
+    exit 2
+fi
+echo "[CSP25D] Configured seed=${CSP_SEED:-843}, epochs=${CSP_EPOCHS:-2}"
+echo "[CSP25D] Original frozen rule: $CSP_RULE_JSON"
+sha256sum "$CSP_RULE_JSON" "$CSP_MANIFEST"
+
 # Must match module used to create the virtualenv on this particular cluster.
 if [[ -n "${CSP_PY_MODULE:-}" ]]; then
     module load "$CSP_PY_MODULE"
