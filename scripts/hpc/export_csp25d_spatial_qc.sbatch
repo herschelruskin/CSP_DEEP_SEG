@@ -12,8 +12,8 @@ set -euo pipefail
 : "${CSP_REPO:?Set project checkout}"
 : "${CSP_VENV:?Set CUDA virtualenv}"
 : "${CSP_MANIFEST:?Set private Linux 44/11 manifest}"
-: "${CSP_CHECKPOINT:?Set original best.pt from pilot_2epoch}"
-: "${CSP_PRIOR_METRICS:?Set private per_case_metrics.csv from frozen evaluator}"
+: "${CSP_CHECKPOINT:?Set saved best.pt from intended experiment}"
+: "${CSP_PRIOR_METRICS:?Set per_case_metrics.csv from SAME checkpoint as CSP_CHECKPOINT}"
 : "${CSP_SPATIAL_OUT:?Set new private spatial QC output directory}"
 
 if [[ -n "${CSP_PY_MODULE:-}" ]]; then
