@@ -44,6 +44,18 @@ def sha256(path):
     return h.hexdigest()
 
 
+def validate_saved_checkpoint_epoch(checkpoint):
+    """Accept any saved positive-epoch model; reject missing or invalid epochs.
+
+    Unlike the pilot QC, this lets the exact same export method inspect the
+    20-epoch experiment's epoch-7 best checkpoint without changing thresholds.
+    """
+    epoch = checkpoint.get("epoch")
+    if isinstance(epoch, bool) or not isinstance(epoch, int) or epoch < 1:
+        raise ValueError("Checkpoint epoch must be a positive integer")
+    return epoch
+
+
 def connected_components(mask, connectivity=26):
     """Return largest-first 3D 6- or 26-connected voxel clusters.
 
@@ -229,8 +241,7 @@ def main():
     checkpoint = load_csp25d_checkpoint(args.checkpoint, map_location="cpu")
     config = checkpoint["config"]
     manifest_hash = require_same_manifest(args.manifest, config)
-    if not isinstance(checkpoint.get("epoch"), int) or checkpoint["epoch"] < 1:
-        raise ValueError("Checkpoint epoch must be a positive integer")
+    validate_saved_checkpoint_epoch(checkpoint)
     rows = [r for r in read_manifest(args.manifest)
             if r["split"] == "val" and usable_for_supervision(r)]
     if len(rows) != args.expected_subjects or any(row["presence"] != "present" for row in rows):
