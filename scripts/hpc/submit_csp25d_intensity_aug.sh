@@ -52,7 +52,7 @@ for SEED in 843 844 845; do
         echo "[SKIP] Existing output directory for seed $SEED"
         continue
     fi
-    if squeue -u "$USER" -h -o '%j' | grep -Fxq "$NAME"; then
+    if squeue -u "$USER" -h -o '%j' | grep -Fx "$NAME" >/dev/null; then
         echo "[SKIP] Existing queued/running job for seed $SEED"
         continue
     fi
