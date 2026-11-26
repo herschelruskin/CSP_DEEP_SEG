@@ -21,6 +21,13 @@ fi
 echo "[CSP25D] Configured seed=${CSP_SEED:-843}, epochs=${CSP_EPOCHS:-2}"
 echo "[CSP25D] Original frozen rule: $CSP_RULE_JSON"
 sha256sum "$CSP_RULE_JSON" "$CSP_MANIFEST"
+if [[ -n "${CSP_EXPECT_MANIFEST_SHA256:-}" ]]; then
+    actual_manifest_sha="$(sha256sum "$CSP_MANIFEST" | cut -d' ' -f1)"
+    if [[ "$actual_manifest_sha" != "$CSP_EXPECT_MANIFEST_SHA256" ]]; then
+        echo "[CSP25D] FAIL: frozen manifest hash mismatch. Stop rather than mixing train/val splits." >&2
+        exit 2
+    fi
+fi
 
 # Must match module used to create the virtualenv on this particular cluster.
 if [[ -n "${CSP_PY_MODULE:-}" ]]; then
