@@ -92,3 +92,21 @@ Interpret variability of the checkpoint-selected validation Dice across runs as 
 
 Separate R1 vs R2 20-case intra-rater study (one annotator) gave 17 positive-pair mean Dice 0.79905 (95% bootstrap CI 0.7445–0.8541), absolute-agreement volume ICC(A,1)=0.8867, positive-pair R2 cumulative volume +27.1%, and presence agreement 90% (kappa 0.459). These are not directly comparable with the 11-case U-Net validation Dice.
 
+
+## Actual three-seed results (2026-11-26)
+
+User confirmed seed-844 and seed-845 Slurm jobs 10722026 and 10722028 completed and read each completed run's `config.json` / `history.csv`. All three runs report same private frozen 44/11 manifest SHA256: `3498caf14cddb7fa56e50b26333a2374d49ac472170231a92a2886b977291229`.
+
+| Seed | Best epoch | Best case-mean validation Dice | Epoch-20 Dice |
+| --- | ---: | ---: | ---: |
+| 843 | 7 | 0.7906230871477724 | 0.7877458006371768 |
+| 844 | 12 | 0.7899741330553649 | 0.7398608441703682 |
+| 845 | 4 | 0.7851818946927506 | 0.7607746156541676 |
+
+Mean of three best scores = 0.7885930383; range = 0.7851818947 to 0.7906230871; spread = 0.0054411925. Best-checkpoint selection occurs on the **same eleven subjects** for each run, so similarity of selected-best scores is exploratory training stability, NOT independent generalization or a reliable Dice ceiling. Final-epoch performance varies more, consistent with training/validation fluctuation.
+
+## Immediate next action: per-subject validation
+
+Run the existing GPU evaluation sbatch `scripts/hpc/evaluate_csp25d.sbatch` separately for seed 844 and seed 845 with private original manifest, best.pt per run and distinct output directories under `$SCRATCH/csp25d_private/baseline_seed843/runs/baseline_20epoch_seed844_eval_best` and `...seed845_eval_best`. The evaluator asserts checkpoint manifest SHA256 and produces `per_case_metrics.csv` + `summary.json`. Compare seed-wise per-case Dice, signed and absolute volume error, recall and FP voxels. Seed843 already evaluated as `runs/baseline_20epoch_seed843_eval_best/`. No HCP data should be committed to public GitHub.
+
+Then consider the already proposed incremental intensity augmentation experiment only after noting across-seed hard cases, and prioritize new untouched annotated evaluation cases, confident-negative adjudication and an independent family-aware split. R1/R2 reliability study (mean Dice 0.799) was on a **different cohort** and must not be equated directly with these validation scores.
