@@ -51,7 +51,7 @@ Set `CSP_RULE_JSON` to the **verified original corrected-112112 calibrated_rules
 
 ```bash
 export CSP_RULE_JSON='PASTE_VERIFIED_ORIGINAL_PRIVATE_RULE_PATH_HERE'
-test -f "$CSP_RULE_JSON" || { echo 'Calibration file missing'; return 1 2>/dev/null || false; }
+if [[ ! -f "$CSP_RULE_JSON" ]]; then echo 'Calibration file missing: do not submit jobs'; else echo 'Calibration file verified'; fi
 sha256sum "$CSP_MANIFEST" "$CSP_RULE_JSON"
 ```
 
