@@ -726,3 +726,15 @@ def test_spatial_qc_export_nifti_identical_geometry_and_zip(tmp_path):
             crop.read_bytes()).hexdigest()
     with pytest.raises(FileExistsError, match="existing QC ZIP"):
         build_zip(packaged, archive)
+
+
+def test_spatial_qc_accepts_later_best_epoch_and_rejects_bad_epoch():
+    """The original QC hardcoded epoch one; newer saved best.pt may be epoch 7."""
+    from export_csp25d_spatial_qc import validate_saved_checkpoint_epoch
+
+    assert validate_saved_checkpoint_epoch({"epoch": 1}) == 1
+    assert validate_saved_checkpoint_epoch({"epoch": 7}) == 7
+    assert validate_saved_checkpoint_epoch({"epoch": 20}) == 20
+    for value in (None, 0, -1, True, 7.5, "7"):
+        with pytest.raises(ValueError, match="Checkpoint epoch"):
+            validate_saved_checkpoint_epoch({"epoch": value})
