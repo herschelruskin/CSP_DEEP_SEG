@@ -28,6 +28,24 @@ On Narval after `git pull --ff-only`, check `bash -n scripts/hpc/train_csp25d.sb
 
 ## Submitting the three planned augmented training runs
 
+**Preferred one-command verified workflow** (Narval SSH; no here-document):
+
+```bash
+cd ~/CSP_DEEP_SEG
+git pull --ff-only
+bash scripts/hpc/submit_csp25d_intensity_aug.sh
+```
+
+The helper checks the unchanged private manifest SHA256, finds exactly one original
+private `calibrated_rules.json` (or uses an explicitly exported `CSP_RULE_JSON`),
+checks files, then submits seed 843/844/845 as separate, safe Slurm GPU jobs.
+It skips a seed if its output directory or pending/running job is already present,
+and prints the current job list. If multiple rule files exist, it stops and
+asks for a verified path instead of guessing. The underlying GPU sbatch
+uses exactly the same code/config as the manual submissions below.
+
+### Manual submission alternative
+
 Narval SSH terminal (not 3D Slicer, not Windows PowerShell):
 
 ```bash
