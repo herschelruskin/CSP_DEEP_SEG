@@ -126,6 +126,29 @@ def normalize_t2(img: np.ndarray):
     return scaled.astype(np.float32)
 
 
+def augment_t2_stack(x: torch.Tensor, generator: torch.Generator,
+                     gain_delta: float = 0.10, offset_delta: float = 0.03) -> torch.Tensor:
+    """Mild training-only T2 gain/offset, shared across all seven channels.
+
+    Each center-slice training sample receives one gain and offset applied
+    identically to all coronal context channels. This preserves cross-slice
+    consistency and spatial geometry, keeps zero background unchanged, and
+    never transforms labels. The separate generator does not advance global
+    sampler/model RNG state. This is one preset experiment, not a sweep.
+    """
+    if x.ndim != 4 or not x.is_floating_point():
+        raise ValueError('Expected floating-point batch shaped N,C,H,W')
+    if x.device.type != 'cpu':
+        raise ValueError('Apply augmentation on CPU before GPU transfer')
+    if not (0 <= gain_delta <= 1 and 0 <= offset_delta <= 1):
+        raise ValueError('Invalid augmentation bounds')
+    shape = (x.shape[0], 1, 1, 1)
+    gain = 1.0 + (2.0 * torch.rand(shape, generator=generator) - 1.0) * gain_delta
+    offset = (2.0 * torch.rand(shape, generator=generator) - 1.0) * offset_delta
+    shifted = torch.clamp(x * gain + offset, min=0.0, max=1.0)
+    return torch.where(x > 0, shifted, x)
+
+
 def load_csp25d_checkpoint(path, map_location="cpu"):
     """Load a CSP25D checkpoint with restricted PyTorch deserialization.
 
@@ -380,6 +403,7 @@ def train(args):
     if not train_rows or not val_rows:
         raise ValueError('Need eligible explicit train and val subjects; see annotation-confidence policy')
     seed_all(args.seed)
+    aug_rng = torch.Generator(device='cpu').manual_seed(args.seed + 100000) if args.intensity_augment else None
     train_ds = CoronalDataset(train_rows, args.slices, args.boundary_ignore)
     positive = [b for _, _, b in train_ds.index]
     p, n = sum(positive), len(positive) - sum(positive)
@@ -406,6 +430,10 @@ def train(args):
               'gpu_total_vram_bytes': torch.cuda.get_device_properties(0).total_memory if device.type == 'cuda' else None,
               'slices': args.slices, 'width': args.width, 'seed': args.seed, 'lr': args.lr,
               'boundary_ignore': args.boundary_ignore, 'device': str(device), 'torch': str(torch.__version__),
+              'intensity_augment': bool(args.intensity_augment),
+              'augmentation': ({'kind': 'per-stack shared gain/offset, nonzero voxels only',
+                                'gain_delta': 0.10, 'offset_delta': 0.03,
+                                'generator_seed': args.seed + 100000} if args.intensity_augment else None),
               'manifest_sha256': manifest_hash, 'git_head': git_head,
               'train_subjects': len(train_rows), 'val_subjects': len(val_rows),
               'positive_training_slices': p, 'negative_training_slices': n,
@@ -421,6 +449,8 @@ def train(args):
                 torch.cuda.reset_peak_memory_stats(device)
             model.train(); losses = []
             for x, y in loader:
+                if args.intensity_augment:
+                    x = augment_t2_stack(x, aug_rng)
                 x = x.to(device); y = y.to(device)
                 optimizer.zero_grad(set_to_none=True)
                 loss = bce_dice_loss(model(x), y)
@@ -512,6 +542,7 @@ def main():
     t.add_argument('--slices', type=int, default=7); t.add_argument('--width', type=int, default=16)
     t.add_argument('--epochs', type=int, default=20); t.add_argument('--lr', type=float, default=3e-4)
     t.add_argument('--seed', type=int, default=843); t.add_argument('--boundary-ignore', type=int, default=1); t.add_argument('--cpu', action='store_true'); t.add_argument('--require-cuda', action='store_true')
+    t.add_argument('--intensity-augment', action='store_true', help='Training-only per-stack T2 gain +/-10%% and offset +/-0.03 on nonzero intensities')
     i = sub.add_parser('infer'); i.add_argument('--manifest', required=True); i.add_argument('--checkpoint', required=True)
     i.add_argument('--subject-id', required=True); i.add_argument('--out', required=True)
     i.add_argument('--threshold', type=float, default=0.5); i.add_argument('--cpu', action='store_true')
