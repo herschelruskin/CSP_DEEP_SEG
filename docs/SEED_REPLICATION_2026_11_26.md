@@ -28,6 +28,7 @@ export CSP_VENV="$HOME/venvs/csp25d"
 export CSP_PY_MODULE="python/3.11.5"
 export CSP_MANIFEST="$ROOT/manifests/model_25d_trainval_seed843_linux.csv"
 export CSP_EPOCHS=20
+export CSP_EXPECT_MANIFEST_SHA256="3498caf14cddb7fa56e50b26333a2374d49ac472170231a92a2886b977291229"
 mkdir -p "$ROOT/logs"
 find "$ROOT" -name calibrated_rules.json -type f -print
 ```
@@ -40,7 +41,7 @@ test -f "$CSP_RULE_JSON" && test -f "$CSP_MANIFEST"
 sha256sum "$CSP_MANIFEST" "$CSP_RULE_JSON"
 ```
 
-Expected **original frozen manifest SHA256**: `3498caf14cddb7fa56e50b26333a2374d49ac472170231a92a2886b977291229`. If the manifest differs, **STOP** and investigate. The original frozen crop JSON hash should be compared to the earlier run log if available. The Slurm wrapper repeats the manifest and rule hashes.
+Expected **original frozen manifest SHA256**: `3498caf14cddb7fa56e50b26333a2374d49ac472170231a92a2886b977291229`. If the manifest differs, **STOP** and investigate. The original frozen crop JSON hash should be compared to the earlier run log if available. The Slurm wrapper repeats the manifest and rule hashes and **fails** if the private manifest differs from `CSP_EXPECT_MANIFEST_SHA256`.
 
 Submit **seed 844** once:
 
