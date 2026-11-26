@@ -108,7 +108,9 @@ def load_csp25d_qc(case_dir=None):
         x, y, z, w = matrix.MultiplyPoint(
             (float(kji[2]), float(kji[1]), float(kji[0]), 1.0))
         if w:
-            slicer.util.jumpSlicesToLocation(x / w, y / w, z / w, centered=True)
+            # The public jump API belongs to Markups logic, not slicer.util.
+            # Slicer's segmentations script repository documents this call.
+            slicer.modules.markups.logic().JumpSlicesToLocation(x / w, y / w, z / w, True)
 
     print("[CSP QC] " + name + " loaded on native T2 grid.")
     print("[CSP QC] GREEN=true positives, RED=extra predicted, BLUE=missed manual.")
