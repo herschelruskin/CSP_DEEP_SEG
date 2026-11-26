@@ -1,6 +1,6 @@
 """Export private 3D CSP prediction overlays and connected-component QC.
 
-Run on an allocated GPU node using the frozen best.pt and fixed 11-subject
+Run on an allocated GPU node using an existing best.pt and fixed 11-subject
 validation manifest, never on the Narval login node. A single ZIP is produced
 for 3D Slicer review at home. Outputs are PRIVATE MRI-derived data and must
 never be pushed to public GitHub.
@@ -12,7 +12,7 @@ Per subject the ZIP includes:
   - Labelmap: 1=TP, 2=FP, 3=FN, 0=background;
   - Both 6-neighbor and 26-neighbor 3D connected-component measurements.
 
-The original 2-epoch checkpoint and ground-truth masks are never modified.
+The selected checkpoint and ground-truth masks are never modified.
 All counts are checked against prior per-case metrics before ZIP creation.
 """
 from __future__ import annotations
@@ -173,7 +173,7 @@ def export_case_files(out_dir, subject_id, original_crop, prob, affine, ref, thr
     _write_nifti(ref.astype(np.uint8), affine, out_dir / "manual_CSP.nii.gz",
                  "Manual CSP, native cropped T2 grid, 1=positive")
     _write_nifti(pred.astype(np.uint8), affine, out_dir / "predicted_CSP.nii.gz",
-                 "Frozen 2.5D U-Net prediction at threshold 0.5")
+                 "2.5D U-Net prediction at specified probability threshold")
     _write_nifti(prob.astype(np.float32), affine, out_dir / "probability_CSP.nii.gz",
                  "Frozen 2.5D U-Net per-voxel CSP probability")
     _write_nifti(labels, affine, out_dir / "error_TP1_FP2_FN3.nii.gz",
@@ -207,9 +207,9 @@ def build_zip(output_dir, archive_path):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--manifest", required=True, help="Private fixed 44/11 subject split")
-    p.add_argument("--checkpoint", required=True, help="Original pilot best.pt")
+    p.add_argument("--checkpoint", required=True, help="Existing baseline best.pt, any completed epoch")
     p.add_argument("--prior-metrics", required=True,
-                   help="Prior frozen 11-subject per_case_metrics.csv; required consistency guard")
+                   help="Per-case metrics from the SAME checkpoint; required reproducibility guard")
     p.add_argument("--out", required=True, help="New private QC directory (must NOT exist)")
     p.add_argument("--expected-subjects", type=int, default=11)
     p.add_argument("--threshold", type=float, default=0.5)
@@ -229,8 +229,8 @@ def main():
     checkpoint = load_csp25d_checkpoint(args.checkpoint, map_location="cpu")
     config = checkpoint["config"]
     manifest_hash = require_same_manifest(args.manifest, config)
-    if checkpoint.get("epoch") != 1:
-        raise ValueError("Expected frozen best.pt from epoch 1, not another checkpoint")
+    if not isinstance(checkpoint.get("epoch"), int) or checkpoint["epoch"] < 1:
+        raise ValueError("Checkpoint epoch must be a positive integer")
     rows = [r for r in read_manifest(args.manifest)
             if r["split"] == "val" and usable_for_supervision(r)]
     if len(rows) != args.expected_subjects or any(row["presence"] != "present" for row in rows):
@@ -299,7 +299,7 @@ def main():
             writer.writerow({"subject_id": row["subject_id"], "reviewed": "no"})
 
     report_summary = {
-        "experiment": "2.5D CSP frozen epoch-1 positive-only validation QC",
+        "experiment": "2.5D CSP saved best-checkpoint positive-only validation QC",
         "threshold": args.threshold,
         "checkpoint_epoch": checkpoint["epoch"],
         "checkpoint_sha256": sha256(args.checkpoint),
@@ -331,6 +331,8 @@ def main():
         "11 positive reference cases; exploratory subject-level validation only.",
         "HCP family IDs unavailable and crop rule calibrated on development data.",
         "",
+        f"Checkpoint epoch: {checkpoint['epoch']}; threshold: {args.threshold}.",
+        "Corresponding prior-metrics CSV must come from this SAME checkpoint.",
         "Each cases/<subject_id>/ folder contains:",
         "- T2_crop.nii.gz -- exact T2 ROI used by model; no resampling.",
         "- manual_CSP.nii.gz -- manual binary mask (0/1).",
