@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/csp25d_baseline.py'
       - 'scripts/compare_csp25d_variants.py'
+      - 'scripts/select_blinded_hcp_test_cohort.py'
       - 'scripts/audit_csp25d_manifest.py'
       - 'scripts/inventory_csp25d_crops.py'
       - 'scripts/overfit_csp25d_real.py'
@@ -13,6 +14,7 @@ on:
       - 'scripts/hpc/**'
       - 'tests/test_csp25d_baseline.py'
       - 'tests/test_csp25d_variant_comparison.py'
+      - 'tests/test_blinded_hcp_test_selection.py'
       - 'tests/test_csp25d_integration.py'
       - 'requirements-25d.txt'
       - '.github/workflows/csp25d-cpu.yml'
@@ -34,8 +36,8 @@ jobs:
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Validate code and synthetic NIfTI integration
         run: |
-          python -m compileall -q scripts/compare_csp25d_variants.py scripts/csp25d_baseline.py scripts/audit_csp25d_manifest.py scripts/inventory_csp25d_crops.py scripts/overfit_csp25d_real.py scripts/reconcile_csp25d_manifest.py scripts/relocate_csp25d_manifest.py
+          python -m compileall -q scripts/select_blinded_hcp_test_cohort.py scripts/compare_csp25d_variants.py scripts/csp25d_baseline.py scripts/audit_csp25d_manifest.py scripts/inventory_csp25d_crops.py scripts/overfit_csp25d_real.py scripts/reconcile_csp25d_manifest.py scripts/relocate_csp25d_manifest.py
           bash -n scripts/hpc/train_csp25d.sbatch
           bash -n scripts/hpc/submit_csp25d_intensity_aug.sh
-          python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py tests/test_csp25d_variant_comparison.py
+          python -m pytest -q tests/test_csp25d_baseline.py tests/test_csp25d_integration.py tests/test_csp25d_variant_comparison.py tests/test_blinded_hcp_test_selection.py
           python scripts/csp25d_baseline.py smoke
