@@ -58,3 +58,40 @@ def test_annotation_uncertainty_filter():
     assert not m.usable_for_supervision({'presence': 'absent', 'qc': 'provisional', 'negative_confidence': '', 'source_mask': ''})
     assert m.usable_for_supervision({'presence': 'absent', 'qc': 'pass', 'negative_confidence': 'high', 'source_mask': ''})
     assert m.usable_for_supervision({'presence': 'present', 'qc': 'provisional', 'negative_confidence': '', 'source_mask': 'mask.nii'})
+
+
+def test_intensity_augmentation_is_deterministic_and_does_not_change_labels_or_background():
+    x = torch.tensor([[[[0.0, 0.25, 0.8]], [[0.0, 0.35, 0.7]], [[0.0, 0.45, 0.6]]]])
+    y = torch.ones((1, 1, 1, 3))
+    original_x, original_y = x.clone(), y.clone()
+    a = m.augment_t2_stack(x, torch.Generator().manual_seed(2026))
+    b = m.augment_t2_stack(x, torch.Generator().manual_seed(2026))
+    torch.testing.assert_close(a, b, rtol=0, atol=0)
+    torch.testing.assert_close(x, original_x)
+    torch.testing.assert_close(y, original_y)
+    assert a.shape == x.shape
+    assert torch.all(a[:, :, :, 0] == 0)  # clipped/zero background stays zero
+    assert torch.all((0 <= a) & (a <= 1))
+    # Every context channel uses one affine gain+offset, not independent noise.
+    original_delta = x[0, 1, 0, 1] - x[0, 0, 0, 1]
+    augmented_delta = a[0, 1, 0, 1] - a[0, 0, 0, 1]
+    gain = augmented_delta / original_delta
+    expected = a[0, 0, 0, 1] + gain * (x[0, 2, 0, 1] - x[0, 0, 0, 1])
+    torch.testing.assert_close(a[0, 2, 0, 1], expected, rtol=1e-5, atol=1e-5)
+
+
+def test_intensity_augmentation_isolated_from_global_torch_rng():
+    x = torch.full((2, 7, 3, 4), 0.5)
+    before = torch.random.get_rng_state().clone()
+    y = m.augment_t2_stack(x, torch.Generator().manual_seed(843 + 100000))
+    after = torch.random.get_rng_state()
+    torch.testing.assert_close(before, after)
+    assert not torch.equal(y, x)
+    assert torch.all(y[:, 0] == y[:, 6])  # across-context consistency
+
+
+def test_intensity_augmentation_invalid_args():
+    with pytest.raises(ValueError):
+        m.augment_t2_stack(torch.zeros(7, 5, 5), torch.Generator())
+    with pytest.raises(ValueError):
+        m.augment_t2_stack(torch.zeros(1, 7, 5, 5), torch.Generator(), gain_delta=-0.1)
