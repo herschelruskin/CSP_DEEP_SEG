@@ -1,5 +1,13 @@
 # CSP_DEEP_SEG
 
+
+## 2026-11-20 December model code (newer than historical status sections below)
+
+**Implemented, synthetic-tested, NOT HCP-trained:** [Native coronal 2.5D U-Net baseline](docs/CSP_25D_BASELINE.md) with [model/training/inference](scripts/csp25d_baseline.py), [manifest-restricted Slicer crop batch](scripts/crop_manifest_slicer.py), [synthetic tests](tests/test_csp25d_baseline.py) and [requirements](requirements-25d.txt). CPU smoke: **489,281 parameters**, 7 coronal input slices, one central CSP mask, 5/5 synthetic tests passed. No actual HCP masks, nibabel NIfTI round trip or GPU training run tested in this environment. Private input manifests and model outputs remain outside Git.
+
+**User-reported current ROI:** the unshifted proportional fitted rule in local results_corrected_112112/calibrated_rules.json retained ~1.00% median source voxels with 0/64 internal LOO misses among fitted positive masks. One real extreme CSP (108828) excluded from fit is not fully contained; the 64 internal cases are not a held-out cohort. Manual Quick Log now reports 70 reviewed (65 present, 5 operationally absent), and several absent/review cases may harbor tiny CSP. The fixed rule is still subject to independent localization validation. Read the new baseline protocol for command lines, QC and caveats. **The older Nov 17–19 status tables below are retained as historical snapshots, not current status.**
+
+
 **Anatomically constrained, label-efficient segmentation of the cavum septum pellucidum (CSP) in high-resolution T2-weighted brain MRI.**
 
 **Project:** Independent, long-term CSP segmentation research program with a CPS 843 Computer Vision final-project deliverable · **Started:** 2026-11-13 · **Status (2026-11-18):** 1,113-subject filename inventory reconciled; ≥20 manual subjects reported; two-case rigid-registration smoke test observed; localization and model training not validated.  
@@ -99,3 +107,8 @@ D:\CSP_DEEP_SEG\
 - [TransUNet](https://doi.org/10.1016/j.media.2024.103280) (candidate model family; no CSP-specific performance presumed)
 
 See [docs/PROJECT_CONTROLS.md](docs/PROJECT_CONTROLS.md) for evidence standards and reporting conventions. The prior seven-stage plan remains a long-term framework; its initial numerical annotation target and registration-first ordering are **superseded for the first proof of concept** by the current staged baseline.
+
+
+## 2026-11-23 2.5D update — preferred Alliance GPU
+
+The December proof-of-concept model is implemented on the feature/native-coronal-25d-baseline-20261120 draft-PR branch; new preflight source/crop NIfTI checks, balanced subject sampling, Windows-to-Linux private data relocation, an Alliance one-GPU Slurm pilot, and synthetic CI tests are documented in [the Alliance GPU procedure](docs/ALLIANCE_GPU_BASELINE.md). **Compute Canada/Alliance is preferred** because the home 2060 Super is not at office; home GPU is a fallback. This update supersedes older GPU-location/status paragraphs elsewhere in the README. No actual HCP GPU training, real segmentation Dice or independent crop validation yet.
