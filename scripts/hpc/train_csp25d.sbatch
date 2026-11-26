@@ -56,11 +56,20 @@ python scripts/audit_csp25d_manifest.py \
     --split train --split val --eligible-only \
     --report "$CSP_OUT/preflight.csv"
 
+# One predeclared optional augmentation arm; no change to baseline by default.
+TRAIN_EXTRA_ARGS=()
+case "${CSP_INTENSITY_AUGMENT:-0}" in
+    0) ;;
+    1) TRAIN_EXTRA_ARGS+=(--intensity-augment) ;;
+    *) echo "[CSP25D] CSP_INTENSITY_AUGMENT must be 0 or 1" >&2; exit 2 ;;
+esac
+echo "[CSP25D] Mild T2 intensity augmentation: ${CSP_INTENSITY_AUGMENT:-0}"
+
 # Short pilot; increase only after run and validation metrics are inspected.
 srun python scripts/csp25d_baseline.py train \
     --manifest "$CSP_MANIFEST" \
     --out "$CSP_OUT" \
     --epochs "${CSP_EPOCHS:-2}" \
-    --slices 7 --width 16 --seed "${CSP_SEED:-843}" --require-cuda
+    --slices 7 --width 16 --seed "${CSP_SEED:-843}" --require-cuda "${TRAIN_EXTRA_ARGS[@]}"
 
 echo "[CSP25D] Complete: $(date -Is)"
