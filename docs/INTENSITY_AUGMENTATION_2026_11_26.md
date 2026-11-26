@@ -95,3 +95,31 @@ Only after completed exit code `0:0`, read each augmented run's `config.json` an
 
 Next priorities after this controlled comparison: separately adjudicated and untouched test subjects, training data family grouping when possible, and cautious exploration of mask boundary uncertainty / presence discrimination. The initial augmented arm is neither an anatomical localizer nor a detector of CSP absence.
 
+
+
+## Final exploratory six-checkpoint evaluation results (2026-11-26)
+
+All augmented saved-best evaluation jobs completed successfully on Narval: `10727728` (843), `10727729` (844), `10727730` (845), `COMPLETED 0:0`. User reports:
+
+| Seed | Arm | Best val mean Dice | Recall | Mean abs volume error mm³ | FP vox | FN vox |
+|---|---|---:|---:|---:|---:|---:|
+|843|Original|0.7906|0.8976|3.492|150|44|
+|843|Augmented|0.8084|0.9253|4.022|155|34|
+|844|Original|0.7900|0.9318|4.864|186|30|
+|844|Augmented|0.7869|0.8323|2.401|112|79|
+|845|Original|0.7852|0.8584|2.744|129|67|
+|845|Augmented|0.8070|0.9239|4.116|159|35|
+
+Mean over seeds: Dice original .7886 vs augmented .8008 (+.0122); recall .8959 vs .8938; mean abs volume error 3.700 vs 3.513 mm³; FP voxels averaged per run 155 vs 142; FN 47 vs 49.3. Changes are inconsistent across seeds: augmentation improves Dice on 843/845 **while increasing their volume errors**; for 844 it reduces excess FP/volume error while substantially worsening recall (49 additional FN voxels). Thus **higher Dice does not consistently yield more accurate CSP volume**. Neither variant has a reliable demonstration of independent generalization, nor were definite-negative controls evaluated.
+
+### Read-only per-subject six-run comparison
+
+A new versioned script `scripts/compare_csp25d_variants.py` loads all six private `per_case_metrics.csv` outputs, verifies matching subject IDs/reference voxel counts, and displays by-subject three-seed mean Dice, FP/FN and seed sensitivity. Run from Narval login, **no GPU necessary**:
+
+```bash
+cd ~/CSP_DEEP_SEG
+git pull --ff-only
+python3 scripts/compare_csp25d_variants.py --runs-root "$SCRATCH/csp25d_private/baseline_seed843/runs"
+```
+
+Its synthetic checks are `tests/test_csp25d_variant_comparison.py`, included in the GitHub CPU CI. The script never trains, infers or modifies labels. Once the per-case comparison is reviewed, stop experimenting on the same 11 cases; prioritize a blinded independent set from as-yet-unlabelled HCP subjects, including a presence/absence evaluation and appropriate family partitioning where possible.
