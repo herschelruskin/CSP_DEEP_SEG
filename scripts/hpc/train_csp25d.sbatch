@@ -45,6 +45,6 @@ srun python scripts/csp25d_baseline.py train \
     --manifest "$CSP_MANIFEST" \
     --out "$CSP_OUT" \
     --epochs "${CSP_EPOCHS:-2}" \
-    --slices 7 --width 16 --seed 843 --require-cuda
+    --slices 7 --width 16 --seed "${CSP_SEED:-843}" --require-cuda
 
 echo "[CSP25D] Complete: $(date -Is)"
