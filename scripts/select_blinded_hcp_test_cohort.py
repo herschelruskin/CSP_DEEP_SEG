@@ -135,6 +135,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20261126)
     parser.add_argument("--n-test", type=int, default=20)
     parser.add_argument("--n-reserve", type=int, default=10)
+    parser.add_argument("--expected-inventory", type=int, default=1113, help="Fail if full HCP inventory is incomplete")
+    parser.add_argument("--expected-development", type=int, default=70, help="Fail if original calibration exclusions are incomplete")
     parser.add_argument("--family-map", type=Path, help="Optional authorized private CSV: subject_id,family_group, all inventory subjects")
     parser.add_argument("--allow-unknown-family", action="store_true", help="Explicitly accept exploratory, not family-independent HCP sampling")
     args = parser.parse_args()
@@ -150,6 +152,11 @@ def main() -> None:
 
     inventory, inv_bytes = read_csv(args.inventory, {"subject_id", "status", "crop_t2", "crop_json"}, "inventory")
     development, cohort_bytes = read_csv(args.cohort, {"subject_id"}, "development cohort")
+    if len(inventory) != args.expected_inventory or len(development) != args.expected_development:
+        raise ValueError(
+            f"Expected full inventory {args.expected_inventory} / development {args.expected_development}; "
+            f"read {len(inventory)} / {len(development)}. Stop and inspect private CSV inputs."
+        )
     family_map = None
     family_bytes = None
     if args.family_map is not None:
